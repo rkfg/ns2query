@@ -1,0 +1,24 @@
+{
+    "token": "your.discordbot.token",
+    "channel_id": "channel identifier",
+    "query_interval": 10,
+    "servers": [
+        {
+            "name": "Server 1",
+            "address": "192.168.0.1:27016",
+            "player_slots": 20,
+            "spec_slots": 6
+        },
+        {
+            "name": "Server 2",
+            "address": "192.168.0.2:27018",
+            "player_slots": 16,
+            "spec_slots": 4
+        }
+    ],
+    "seeding": {
+        "seeding": 4,
+        "almost_full": 12,
+        "cooldown": 600
+    }
+}

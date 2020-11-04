@@ -1,0 +1,15 @@
+{
+    "servers": [
+        {
+            "name": "TTO [Backup]",
+            "address": "127.0.0.1:8080"
+        }
+    ],
+    "seeding": {
+        "seeding": 4,
+        "almost_full": 12,
+        "specs_only": 20,
+        "full": 26,
+        "cooldown": 60
+    }
+}
