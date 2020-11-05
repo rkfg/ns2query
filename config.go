@@ -26,6 +26,8 @@ type ns2server struct {
 	serverState        state
 	maxStateToMessage  state
 	lastStatePromotion time.Time
+	currentMap         string
+	avgSkill           int
 }
 
 func (s *ns2server) playersString() string {
@@ -79,9 +81,6 @@ func loadConfigFilename(filename string) error {
 		json.NewDecoder(file).Decode(&config)
 	} else {
 		return err
-	}
-	for i := range config.Servers {
-		config.Servers[i].maxStateToMessage = full
 	}
 	if config.QueryInterval < 1 {
 		return fmt.Errorf("invalid query interval in config.json: %d", config.QueryInterval)
