@@ -1,7 +1,10 @@
 package main
 
 import (
+	"crypto/tls"
 	"fmt"
+	"log"
+	"net/http"
 	"os"
 	"os/signal"
 	"strings"
@@ -54,6 +57,10 @@ func bot() error {
 		return err
 	}
 	defer dg.Close()
+	if tr, ok := http.DefaultTransport.(*http.Transport); ok {
+		log.Println("Adjusting TLS session cache")
+		tr.TLSClientConfig.ClientSessionCache = tls.NewLRUClientSessionCache(100)
+	}
 	dg.AddHandler(handleCommand)
 	sendChan := make(chan string, 10)
 	go sendMsg(sendChan, dg)
