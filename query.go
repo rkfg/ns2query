@@ -68,7 +68,7 @@ func query(srv *ns2server, sendChan chan string) error {
 		} else {
 			srv.avgSkill = 0
 			avgSkillStr := rules.Rules["AverageSkill"]
-			if avgSkillStr != "nan" {
+			if avgSkillStr != "nan" && avgSkillStr != "" {
 				avgSkill, err := strconv.ParseFloat(avgSkillStr, 32)
 				if err != nil {
 					log.Printf("error parsing avg skill: %s", err)
