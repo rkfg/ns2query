@@ -51,13 +51,14 @@ func passTime(srv *ns2server) {
 func TestNotification(t *testing.T) {
 	srv := &ns2server{
 		Name:              "Test",
+		currentMap:        "test",
 		maxStateToMessage: full,
 		PlayerSlots:       20,
 		SpecSlots:         6,
 	}
 	notif(t, srv, "")
 	srv.players = fillPlayers(4)
-	notif(t, srv, "Test started seeding! There are 4 players there currently: 1, 2, 3, 4")
+	notif(t, srv, "Test [test] started seeding! Skill: 0. There are 4 players there currently: 1, 2, 3, 4")
 	// test demotion
 	srv.players = fillPlayers(3)
 	notif(t, srv, "")
@@ -66,25 +67,35 @@ func TestNotification(t *testing.T) {
 	passTime(srv)
 	notif(t, srv, "")
 	srv.players = fillPlayers(13)
-	notif(t, srv, "Test is almost full! There are 13 players there currently")
+	notif(t, srv, "Test [test] is almost full! Skill: 0. There are 13 players there currently")
 	srv.players = fillPlayers(21)
-	notif(t, srv, "Test is full but you can still make it! There are 5 spectator slots available currently")
+	notif(t, srv, "Test [test] is full but you can still make it! Skill: 0. There are 5 spectator slots available currently")
 	srv.players = fillPlayers(26)
 	notif(t, srv, "") // no message when full
 	srv.players = fillPlayers(19)
-	notif(t, srv, "")
+	notif(t, srv, "") // some fluctuations
 	passTime(srv)
 	srv.players = fillPlayers(21)
-	notif(t, srv, "")
+	notif(t, srv, "") // still no messages
 	passTime(srv)
 	srv.players = fillPlayers(13)
-	notif(t, srv, "")
+	notif(t, srv, "") // until it's empty
 	passTime(srv)
 	srv.players = fillPlayers(3)
-	notif(t, srv, "")
+	notif(t, srv, "") // server became empty, seeding messages enabled again
 	passTime(srv)
 	srv.players = fillPlayers(7)
-	notif(t, srv, "Test started seeding! There are 7 players there currently: 1, 2, 3, 4, 5, 6, 7")
+	notif(t, srv, "Test [test] started seeding! Skill: 0. There are 7 players there currently: 1, 2, 3, 4, 5, 6, 7")
 	srv.players = fillPlayers(12)
-	notif(t, srv, "Test is almost full! There are 12 players there currently")
+	notif(t, srv, "Test [test] is almost full! Skill: 0. There are 12 players there currently")
+	srv.players = fillPlayers(6)
+	passTime(srv)
+	notif(t, srv, "") // some players left, seeding again but no message
+	srv.players = fillPlayers(12)
+	notif(t, srv, "") // no duplicate message even after cooldown
+	srv.players = fillPlayers(3)
+	passTime(srv)
+	notif(t, srv, "") // server became empty, seeding messages enabled again
+	srv.players = fillPlayers(4)
+	notif(t, srv, "Test [test] started seeding! Skill: 0. There are 4 players there currently: 1, 2, 3, 4")
 }

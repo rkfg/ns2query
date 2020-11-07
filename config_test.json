@@ -1,4 +1,7 @@
 {
+    "query_interval": 10,
+    "channel_id": "0",
+    "token": "0",
     "servers": [
         {
             "name": "TTO [Backup]",
@@ -10,6 +13,6 @@
         "almost_full": 12,
         "specs_only": 20,
         "full": 26,
-        "cooldown": 60
+        "cooldown": 30
     }
 }
