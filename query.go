@@ -26,18 +26,21 @@ func maybeNotify(srv *ns2server, sendChan chan string) {
 	if newState > srv.serverState && newState <= srv.maxStateToMessage {
 		srv.lastStatePromotion = time.Now()
 		srv.serverState = newState
-		switch newState {
-		case seedingstarted:
-			sendChan <- fmt.Sprintf("%s [%s] started seeding! Skill: %d. There are %d players there currently: %s",
-				srv.Name, srv.currentMap, srv.avgSkill, len(srv.players), srv.playersString())
-			srv.maxStateToMessage = specsonly
-		case almostfull:
-			sendChan <- fmt.Sprintf("%s [%s] is almost full! Skill: %d. There are %d players there currently",
-				srv.Name, srv.currentMap, srv.avgSkill, len(srv.players))
-		case specsonly:
-			srv.maxStateToMessage = seedingstarted
-			sendChan <- fmt.Sprintf("%s [%s] is full but you can still make it! Skill: %d. There are %d spectator slots available currently",
-				srv.Name, srv.currentMap, srv.avgSkill, srv.PlayerSlots+srv.SpecSlots-len(srv.players))
+		if srv.lastStateAnnounced != newState {
+			srv.lastStateAnnounced = newState
+			switch newState {
+			case seedingstarted:
+				sendChan <- fmt.Sprintf("%s [%s] started seeding! Skill: %d. There are %d players there currently: %s",
+					srv.Name, srv.currentMap, srv.avgSkill, len(srv.players), srv.playersString())
+				srv.maxStateToMessage = specsonly
+			case almostfull:
+				sendChan <- fmt.Sprintf("%s [%s] is almost full! Skill: %d. There are %d players there currently",
+					srv.Name, srv.currentMap, srv.avgSkill, len(srv.players))
+			case specsonly:
+				srv.maxStateToMessage = seedingstarted
+				sendChan <- fmt.Sprintf("%s [%s] is full but you can still make it! Skill: %d. There are %d spectator slots available currently",
+					srv.Name, srv.currentMap, srv.avgSkill, srv.PlayerSlots+srv.SpecSlots-len(srv.players))
+			}
 		}
 	} else {
 		if time.Since(srv.lastStatePromotion).Seconds() > float64(config.Seeding.Cooldown) {
@@ -55,6 +58,7 @@ func query(srv *ns2server, sendChan chan string) error {
 	srv.currentMap = "<unknown>"
 	srv.avgSkill = 0
 	srv.maxStateToMessage = full
+	srv.lastStateAnnounced = empty
 	for {
 		info, err := client.QueryInfo()
 		if err != nil {

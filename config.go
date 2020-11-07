@@ -25,6 +25,7 @@ type ns2server struct {
 	players            []string
 	serverState        state
 	maxStateToMessage  state
+	lastStateAnnounced state
 	lastStatePromotion time.Time
 	currentMap         string
 	avgSkill           int
