@@ -45,6 +45,10 @@ func maybeNotify(srv *ns2server, sendChan chan string) {
 	} else {
 		if time.Since(srv.lastStatePromotion).Seconds() > float64(config.Seeding.Cooldown) {
 			srv.serverState = newState
+			if newState == empty {
+				// if the server goes empty we should allow seeding messages again
+				srv.lastStateAnnounced = empty
+			}
 		}
 	}
 }

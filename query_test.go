@@ -59,11 +59,11 @@ func TestNotification(t *testing.T) {
 	notif(t, srv, "")
 	srv.players = fillPlayers(4)
 	notif(t, srv, "Test [test] started seeding! Skill: 0. There are 4 players there currently: 1, 2, 3, 4")
-	// test demotion
+	// test demotion without cooldown
 	srv.players = fillPlayers(3)
 	notif(t, srv, "")
 	srv.players = fillPlayers(5)
-	notif(t, srv, "")
+	notif(t, srv, "") // no messages after quick demotion
 	passTime(srv)
 	notif(t, srv, "")
 	srv.players = fillPlayers(13)
@@ -98,4 +98,9 @@ func TestNotification(t *testing.T) {
 	notif(t, srv, "") // server became empty, seeding messages enabled again
 	srv.players = fillPlayers(4)
 	notif(t, srv, "Test [test] started seeding! Skill: 0. There are 4 players there currently: 1, 2, 3, 4")
+	srv.players = fillPlayers(3)
+	passTime(srv)
+	notif(t, srv, "") // server became empty
+	srv.players = fillPlayers(4)
+	notif(t, srv, "Test [test] started seeding! Skill: 0. There are 4 players there currently: 1, 2, 3, 4") // server is seeding again
 }
