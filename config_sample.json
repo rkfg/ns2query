@@ -1,7 +1,8 @@
 {
     "token": "your.discordbot.token",
     "channel_id": "channel identifier",
-    "query_interval": 10,
+    "steam_key": "get your key at https://steamcommunity.com/dev/apikey",
+    "query_interval": 60,
     "servers": [
         {
             "name": "Server 1",

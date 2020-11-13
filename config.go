@@ -66,6 +66,7 @@ type seeding struct {
 
 var config struct {
 	Token         string
+	SteamKey      string        `json:"steam_key"`
 	ChannelID     string        `json:"channel_id"`
 	QueryInterval time.Duration `json:"query_interval"`
 	Servers       []ns2server
