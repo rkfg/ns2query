@@ -32,7 +32,7 @@ func getBind(user *discordgo.User) (playerID uint32, err error) {
 	key := []byte(user.String())
 	has, err := db.Has(key, nil)
 	if !has {
-		return 0, fmt.Errorf("player %s isn't in the database. Use `-bind player` to register", user.String())
+		return 0, fmt.Errorf("player %s isn't in the database. Use `-bind <Steam ID>` to register", user.String())
 	}
 	if err != nil {
 		return 0, err
