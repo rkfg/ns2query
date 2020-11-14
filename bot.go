@@ -24,7 +24,7 @@ type hive struct {
 	Alias           string
 	Skill           int
 	SkillOffset     int `json:"skill_offset"`
-	CommSkill       int
+	CommSkill       int `json:"comm_skill"`
 	CommSkillOffset int `json:"comm_skill_offset"`
 }
 
