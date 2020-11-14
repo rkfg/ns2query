@@ -105,11 +105,14 @@ func handleCommand(s *discordgo.Session, m *discordgo.MessageCreate) {
 			if response, err = getSkill(fields[1]); err != nil {
 				response = err.Error()
 			}
+		case "version":
+			response = versionString()
 		case "help":
 			response =
 				`Commands:
 	-status				show server maps, skills and player count
 	-skill player		show skill breakdown for player
+	-version			show current bot version, build date and source code URL
 	
 If your Steam profile page URL looks like <https://steamcommunity.com/profiles/76561197960287930>, use 76561197960287930 as a -skill argument.
 If it looks like <https://steamcommunity.com/id/gabelogannewell>, use gabelogannewell instead. Or just pass the entire URL, we don't judge!`

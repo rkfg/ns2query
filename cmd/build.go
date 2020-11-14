@@ -7,7 +7,9 @@ import (
 	"os"
 	"os/exec"
 	"path"
+	"strings"
 	"sync"
+	"time"
 )
 
 const (
@@ -74,24 +76,49 @@ func pack(cfg buildConfig, wg *sync.WaitGroup) {
 	wg.Done()
 }
 
-func build(cfg buildConfig, wg *sync.WaitGroup) {
-	cmd := exec.Command("go", "build", "-ldflags", "-s -w -extldflags -static", "-o", cfg.binaryName())
+func build(cfg buildConfig, versionFlags string, wg *sync.WaitGroup) {
+	cmd := exec.Command("go", "build", "-ldflags", "-s -w "+versionFlags+" -extldflags -static", "-o", cfg.binaryName())
 	cmd.Env = append(os.Environ(), "GOOS="+cfg.os, "GOARCH="+cfg.arch)
 	out, err := cmd.CombinedOutput()
 	if err != nil {
-		panic(fmt.Sprintf("Build failed! Config: %+v, error: %s, output:\n%s", cfg, err, out))
+		panic(fmt.Sprintf("Build failed! Config: %+v, error: %s, args: %s, output:\n%s", cfg, err, cmd.Args, out))
 	}
 	pack(cfg, wg)
 	wg.Done()
+}
+
+func versionFlags() string {
+	date := time.Now().Format("01-02-2006 15:04:05 -0700 MST")
+	result := fmt.Sprintf(`-X "main.date=%s"`, date)
+	version := ""
+	tag, err := exec.Command("git", "tag", "--contains", "HEAD").Output()
+	if err != nil || string(tag) == "" {
+		branch, err := exec.Command("git", "branch", "--show-current").Output()
+		if err != nil || string(branch) == "" {
+			commit, err := exec.Command("git", "log", "--pretty=format:%h", "-n1").Output()
+			if err == nil && string(commit) != "" {
+				version = fmt.Sprintf("commit %s", commit)
+			}
+		} else {
+			version = fmt.Sprintf("branch %s", branch)
+		}
+	} else {
+		version = string(tag)
+	}
+	if version != "" {
+		result = fmt.Sprintf(`%s -X "main.version=%s"`, result, strings.TrimSuffix(version, "\n"))
+	}
+	return result
 }
 
 func main() {
 	os.RemoveAll(release)
 	os.MkdirAll(release, 0755)
 	wg := sync.WaitGroup{}
+	flags := versionFlags()
 	for _, cfg := range configs {
 		wg.Add(2)
-		go build(cfg, &wg)
+		go build(cfg, flags, &wg)
 	}
 	wg.Wait()
 }
