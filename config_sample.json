@@ -2,6 +2,7 @@
     "token": "your.discordbot.token",
     "channel_id": "channel identifier",
     "steam_key": "get your key at https://steamcommunity.com/dev/apikey",
+    "database_path": "/path/to/botdb/",
     "query_interval": 60,
     "servers": [
         {
