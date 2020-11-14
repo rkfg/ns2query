@@ -5,7 +5,7 @@ import (
 )
 
 func bind(player string, user *discordgo.User) (id uint32, err error) {
-	id, err = playerIDFromPlayer(player)
+	id, err = playerIDFromSteamID(player)
 	if err != nil {
 		return
 	}

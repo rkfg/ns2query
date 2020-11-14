@@ -33,7 +33,7 @@ var (
 	profileRegex = regexp.MustCompile(`https://steamcommunity.com/profiles/(\d*)/?`)
 )
 
-func playerIDFromPlayer(player string) (uint32, error) {
+func playerIDFromSteamID(player string) (uint32, error) {
 	vanityName := vanityRegex.FindStringSubmatch(player)
 	if vanityName != nil {
 		player = vanityName[1]
@@ -43,16 +43,18 @@ func playerIDFromPlayer(player string) (uint32, error) {
 			player = profileID[1]
 		}
 	}
-	steamid, err := steamapi.NewIdFromVanityUrl(player, config.SteamKey)
+	steamid, err := steamapi.NewIdFromString(player)
 	if err != nil {
-		id64, err := strconv.ParseUint(player, 10, 64)
+		steamid, err = steamapi.NewIdFromVanityUrl(player, config.SteamKey)
 		if err != nil {
-			return 0, fmt.Errorf("user/id %s not found", player)
+			id64, err := strconv.ParseUint(player, 10, 64)
+			if err != nil {
+				return 0, fmt.Errorf("steam ID %s not found", player)
+			}
+			steamid = steamapi.NewIdFrom64bit(id64)
 		}
-		steamid = steamapi.NewIdFrom64bit(id64)
 	}
-	id32 := steamid.As32Bit()
-	return id32, nil
+	return steamid.As32Bit(), nil
 }
 
 func getSkill(playerID uint32) (string, error) {
@@ -69,8 +71,7 @@ func getSkill(playerID uint32) (string, error) {
 	return fmt.Sprintf(
 		`%s (ID: %d) skill breakdown:
 Marine skill: %d (commander: %d)
-Alien skill: %d (commander: %d)
-`, skill.Alias, playerID,
+Alien skill: %d (commander: %d)`, skill.Alias, playerID,
 		skill.Skill+skill.SkillOffset, skill.CommSkill+skill.CommSkillOffset,
 		skill.Skill-skill.SkillOffset, skill.CommSkill-skill.CommSkillOffset), nil
 }
@@ -91,7 +92,7 @@ func parseFields(fields []string, author *discordgo.User) (response string, err 
 				return
 			}
 		case 2:
-			playerID, err = playerIDFromPlayer(fields[1])
+			playerID, err = playerIDFromSteamID(fields[1])
 			if err != nil {
 				return
 			}
