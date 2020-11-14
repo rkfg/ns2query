@@ -2,6 +2,7 @@
     "query_interval": 10,
     "channel_id": "0",
     "token": "0",
+    "database_path": "/path/to/botdb/",
     "servers": [
         {
             "name": "TTO [Backup]",

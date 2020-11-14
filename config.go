@@ -68,6 +68,7 @@ var config struct {
 	Token         string
 	SteamKey      string        `json:"steam_key"`
 	ChannelID     string        `json:"channel_id"`
+	DBPath        string        `json:"database_path"`
 	QueryInterval time.Duration `json:"query_interval"`
 	Servers       []ns2server
 	Seeding       seeding
@@ -92,6 +93,9 @@ func loadConfigFilename(filename string) error {
 	}
 	if config.Token == "" {
 		return fmt.Errorf("specify token in config.json")
+	}
+	if config.DBPath == "" {
+		return fmt.Errorf("specify database_path in config.json")
 	}
 	return nil
 }
