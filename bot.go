@@ -14,8 +14,8 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/Philipp15b/go-steamapi"
 	"github.com/bwmarrin/discordgo"
-	"github.com/rkfg/go-steamapi"
 )
 
 const cmdPrefix = "-"
