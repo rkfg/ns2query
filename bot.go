@@ -104,23 +104,18 @@ func parseFields(fields []string, author *discordgo.User) (response string, err 
 			response += fmt.Sprintf("%s [%s], skill: %d, players: %d\n", srv.Name, srv.currentMap, srv.avgSkill, len(srv.players))
 		}
 	case "skill":
-		switch len(fields) {
-		case 1:
+		if len(fields) == 1 {
 			playerID, err = getBind(author.String())
-			if err != nil {
-				return
-			}
-		case 2:
+		} else {
 			if strings.HasPrefix(fields[1], discordPrefix) {
-				playerID, err = playerIDFromDiscordName(strings.TrimPrefix(strings.ToLower(fields[1]), discordPrefix))
+				playerID, err = playerIDFromDiscordName(
+					strings.TrimPrefix(strings.ToLower(strings.Join(fields[1:], " ")), discordPrefix))
 			} else {
 				playerID, err = playerIDFromSteamID(fields[1])
 			}
-			if err != nil {
-				return
-			}
-		default:
-			return "", fmt.Errorf("invalid argument for `-skill`")
+		}
+		if err != nil {
+			return
 		}
 		if response, err = getSkill(playerID); err != nil {
 			return
