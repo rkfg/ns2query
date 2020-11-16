@@ -146,12 +146,12 @@ func parseFields(fields []string, author *discordgo.User) (response string, err 
 		return versionString(), nil
 	case "help":
 		return `Commands:
-	-status				show server maps, skills and player count
+	-status				show server maps, skills and player count.
 	-skill [Steam ID]	show skill breakdown for player, the argument can be omitted if the player is bound. Use ` + "`!discordname`" +
 				` argument to query other registered players; no need to type the whole name, several characters should be enough.
 	-bind [Steam ID]	bind your Discord accound to the specified player so you can use ` + "`-skill`" +
 				` without argument. Use ` + "`-bind`" + ` without argument to unbind yourself.
-	-version			show current bot version, build date and source code URL
+	-version			show current bot version, build date and source code URL.
 	
 If your Steam profile page URL looks like <https://steamcommunity.com/profiles/76561197960287930>, use 76561197960287930 as a -skill argument.
 If it looks like <https://steamcommunity.com/id/gabelogannewell>, use gabelogannewell instead. Or just pass the entire URL, we don't judge!`,
