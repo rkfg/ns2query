@@ -74,8 +74,8 @@ var config struct {
 	Seeding       seeding
 }
 
-func loadConfig() error {
-	return loadConfigFilename("config.json")
+func loadConfig(path string) error {
+	return loadConfigFilename(path)
 }
 
 func loadConfigFilename(filename string) error {

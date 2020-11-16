@@ -18,7 +18,11 @@ import (
 	"github.com/bwmarrin/discordgo"
 )
 
-const cmdPrefix = "-"
+const (
+	cmdPrefix       = "-"
+	lowercasePrefix = "/lc/"
+	discordPrefix   = "!"
+)
 
 type hive struct {
 	Alias           string
@@ -32,6 +36,21 @@ var (
 	vanityRegex  = regexp.MustCompile(`https://steamcommunity.com/id/([^/]*)/?`)
 	profileRegex = regexp.MustCompile(`https://steamcommunity.com/profiles/(\d*)/?`)
 )
+
+func playerIDFromDiscordName(username string) (uint32, error) {
+	iter := db.NewIterator(nil, nil)
+	defer iter.Release()
+	if ok := iter.Seek([]byte(lowercasePrefix + username)); ok {
+		if strings.HasPrefix(string(iter.Key()), lowercasePrefix) {
+			discordName := string(iter.Value())
+			// make sure it's really a prefix
+			if strings.HasPrefix(strings.ToLower(discordName), username) {
+				return getBind(discordName)
+			}
+		}
+	}
+	return 0, fmt.Errorf("discord user name starting with '%s' was not found", username)
+}
 
 func playerIDFromSteamID(player string) (uint32, error) {
 	vanityName := vanityRegex.FindStringSubmatch(player)
@@ -87,12 +106,16 @@ func parseFields(fields []string, author *discordgo.User) (response string, err 
 	case "skill":
 		switch len(fields) {
 		case 1:
-			playerID, err = getBind(author)
+			playerID, err = getBind(author.String())
 			if err != nil {
 				return
 			}
 		case 2:
-			playerID, err = playerIDFromSteamID(fields[1])
+			if strings.HasPrefix(fields[1], discordPrefix) {
+				playerID, err = playerIDFromDiscordName(strings.TrimPrefix(strings.ToLower(fields[1]), discordPrefix))
+			} else {
+				playerID, err = playerIDFromSteamID(fields[1])
+			}
 			if err != nil {
 				return
 			}
@@ -124,8 +147,10 @@ func parseFields(fields []string, author *discordgo.User) (response string, err 
 	case "help":
 		return `Commands:
 	-status				show server maps, skills and player count
-	-skill [Steam ID]	show skill breakdown for player, the argument can be omitted if the player is bound
-	-bind [Steam ID]	bind your Discord accound to the specified player so you can use ` + "`-skill`" + ` without argument. Use ` + "`-bind`" + ` without argument to unbind yourself.
+	-skill [Steam ID]	show skill breakdown for player, the argument can be omitted if the player is bound. Use ` + "`!discordname`" +
+				` argument to query other registered players; no need to type the whole name, several characters should be enough.
+	-bind [Steam ID]	bind your Discord accound to the specified player so you can use ` + "`-skill`" +
+				` without argument. Use ` + "`-bind`" + ` without argument to unbind yourself.
 	-version			show current bot version, build date and source code URL
 	
 If your Steam profile page URL looks like <https://steamcommunity.com/profiles/76561197960287930>, use 76561197960287930 as a -skill argument.
