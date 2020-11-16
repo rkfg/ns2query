@@ -12,13 +12,7 @@ func updateDB() (err error) {
 	if err != nil {
 		return
 	}
-	defer func() {
-		if err != nil {
-			tx.Discard()
-		} else {
-			tx.Commit()
-		}
-	}()
+	defer commitOrDismiss(tx, &err)
 	iter := tx.NewIterator(nil, nil)
 	defer iter.Release()
 	for iter.Next() {
@@ -29,5 +23,5 @@ func updateDB() (err error) {
 			}
 		}
 	}
-	return nil
+	return
 }
