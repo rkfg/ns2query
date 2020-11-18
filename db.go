@@ -38,13 +38,13 @@ func pathToString(path []string, key string) []byte {
 	return []byte(strings.Join(append(path, key), "\x00"))
 }
 
-func findFirstString(path []string, prefix string) (result string) {
+func findFirstString(path []string, prefix string) (result string, err error) {
 	iter := db.NewIterator(util.BytesPrefix(pathToString(path, prefix)), nil)
 	defer iter.Release()
 	if ok := iter.Next(); ok {
-		return string(iter.Value())
+		return string(iter.Value()), nil
 	}
-	return ""
+	return "", leveldb.ErrNotFound
 }
 
 func getUInt32(path []string, key string) (uint32, error) {

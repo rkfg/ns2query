@@ -40,8 +40,8 @@ var (
 )
 
 func playerIDFromDiscordName(username string) (uint32, error) {
-	discordName := findFirstString(lowercasePath, username)
-	if discordName == "" {
+	discordName, err := findFirstString(lowercasePath, username)
+	if err != nil {
 		return 0, fmt.Errorf("discord user name starting with '%s' was not found", username)
 	}
 	return getBind(discordName)

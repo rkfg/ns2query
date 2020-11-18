@@ -13,7 +13,8 @@ func bind(player string, user *discordgo.User) (id uint32, err error) {
 	if err != nil {
 		return
 	}
-	return id, putBind(id, user)
+	err = putBind(id, user)
+	return
 }
 
 func putBind(playerID uint32, discordUser *discordgo.User) (err error) {
@@ -37,21 +38,21 @@ func putLowercaseIndex(tx *leveldb.Transaction, username string) error {
 }
 
 func getBind(username string) (playerID uint32, err error) {
-	val, err := getUInt32(normalPath, username)
+	playerID, err = getUInt32(normalPath, username)
 	if err == leveldb.ErrNotFound {
 		return 0, fmt.Errorf("player %s isn't in the database. Use `-bind <Steam ID>` to register", username)
 	}
 	if err != nil {
-		return 0, err
+		return
 	}
-	return val, nil
+	return
 }
 
 func deleteBind(user *discordgo.User) (err error) {
 	var tx *leveldb.Transaction
 	tx, err = db.OpenTransaction()
 	if err != nil {
-		return err
+		return
 	}
 	defer commitOrDiscard(tx, &err)
 	err = deleteString(tx, normalPath, user.String())
