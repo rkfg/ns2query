@@ -33,23 +33,18 @@ type hive struct {
 }
 
 var (
-	vanityRegex  = regexp.MustCompile(`https://steamcommunity.com/id/([^/]*)/?`)
-	profileRegex = regexp.MustCompile(`https://steamcommunity.com/profiles/(\d*)/?`)
+	vanityRegex   = regexp.MustCompile(`https://steamcommunity.com/id/([^/]*)/?`)
+	profileRegex  = regexp.MustCompile(`https://steamcommunity.com/profiles/(\d*)/?`)
+	lowercasePath = []string{"discord", "users", "lowercase"}
+	normalPath    = []string{"discord", "users", "normal"}
 )
 
 func playerIDFromDiscordName(username string) (uint32, error) {
-	iter := db.NewIterator(nil, nil)
-	defer iter.Release()
-	if ok := iter.Seek([]byte(lowercasePrefix + username)); ok {
-		if strings.HasPrefix(string(iter.Key()), lowercasePrefix) {
-			discordName := string(iter.Value())
-			// make sure it's really a prefix
-			if strings.HasPrefix(strings.ToLower(discordName), username) {
-				return getBind(discordName)
-			}
-		}
+	discordName := findFirstString(lowercasePath, username)
+	if discordName == "" {
+		return 0, fmt.Errorf("discord user name starting with '%s' was not found", username)
 	}
-	return 0, fmt.Errorf("discord user name starting with '%s' was not found", username)
+	return getBind(discordName)
 }
 
 func playerIDFromSteamID(player string) (uint32, error) {

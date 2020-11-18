@@ -1,7 +1,6 @@
 package main
 
 import (
-	"encoding/binary"
 	"fmt"
 	"strings"
 
@@ -23,10 +22,8 @@ func putBind(playerID uint32, discordUser *discordgo.User) (err error) {
 	if err != nil {
 		return
 	}
-	defer commitOrDismiss(tx, &err)
-	var key [4]byte
-	binary.LittleEndian.PutUint32(key[:], playerID)
-	if err = tx.Put([]byte(discordUser.String()), key[:], nil); err != nil {
+	defer commitOrDiscard(tx, &err)
+	if err = putUInt32(tx, normalPath, discordUser.String(), playerID); err != nil {
 		return
 	}
 	if err = putLowercaseIndex(tx, discordUser.String()); err != nil {
@@ -36,25 +33,27 @@ func putBind(playerID uint32, discordUser *discordgo.User) (err error) {
 }
 
 func putLowercaseIndex(tx *leveldb.Transaction, username string) error {
-	return tx.Put([]byte(lowercasePrefix+strings.ToLower(username)), []byte(username), nil)
+	return putString(tx, lowercasePath, strings.ToLower(username), username)
 }
 
 func getBind(username string) (playerID uint32, err error) {
-	key := []byte(username)
-	has, err := db.Has(key, nil)
-	if !has {
+	val, err := getUInt32(normalPath, username)
+	if err == leveldb.ErrNotFound {
 		return 0, fmt.Errorf("player %s isn't in the database. Use `-bind <Steam ID>` to register", username)
 	}
 	if err != nil {
 		return 0, err
 	}
-	val, err := db.Get(key, nil)
-	if err != nil {
-		return 0, err
-	}
-	return binary.LittleEndian.Uint32(val), nil
+	return val, nil
 }
 
-func deleteBind(user *discordgo.User) error {
-	return db.Delete([]byte(user.String()), nil)
+func deleteBind(user *discordgo.User) (err error) {
+	var tx *leveldb.Transaction
+	tx, err = db.OpenTransaction()
+	if err != nil {
+		return err
+	}
+	defer commitOrDiscard(tx, &err)
+	err = deleteString(tx, normalPath, user.String())
+	return
 }

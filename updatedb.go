@@ -12,15 +12,21 @@ func updateDB() (err error) {
 	if err != nil {
 		return
 	}
-	defer commitOrDismiss(tx, &err)
+	defer commitOrDiscard(tx, &err)
 	iter := tx.NewIterator(nil, nil)
 	defer iter.Release()
 	for iter.Next() {
 		name := string(iter.Key())
-		if !strings.HasPrefix(name, lowercasePrefix) {
+		if strings.HasPrefix(name, lowercasePrefix) {
+			deleteString(tx, nil, name)
+		} else {
 			if err = putLowercaseIndex(tx, name); err != nil {
 				return
 			}
+			if err = putUInt32(tx, normalPath, name, uint32FromBytes(iter.Value())); err != nil {
+				return
+			}
+			deleteString(tx, nil, name)
 		}
 	}
 	return
