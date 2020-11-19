@@ -35,8 +35,8 @@ type hive struct {
 var (
 	vanityRegex   = regexp.MustCompile(`https://steamcommunity.com/id/([^/]*)/?`)
 	profileRegex  = regexp.MustCompile(`https://steamcommunity.com/profiles/(\d*)/?`)
-	lowercasePath = []string{"discord", "users", "lowercase"}
-	normalPath    = []string{"discord", "users", "normal"}
+	lowercasePath = makePath("discord", "users", "lowercase")
+	normalPath    = makePath("discord", "users", "normal")
 )
 
 func playerIDFromDiscordName(username string) (uint32, error) {

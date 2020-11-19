@@ -8,6 +8,8 @@ import (
 	"github.com/syndtr/goleveldb/leveldb/util"
 )
 
+const pathSeparator = "\x00"
+
 var db *leveldb.DB
 
 // commitOrDiscard either commits or discard the transaction depending on the error presence.
@@ -34,12 +36,19 @@ func closeDB() error {
 	return db.Close()
 }
 
-func pathToString(path []string, key string) []byte {
-	return []byte(strings.Join(append(path, key), "\x00"))
+func makePath(path ...string) string {
+	return strings.Join(path, pathSeparator)
 }
 
-func findFirstString(path []string, prefix string) (result string, err error) {
-	iter := db.NewIterator(util.BytesPrefix(pathToString(path, prefix)), nil)
+func pathKey(path string, key string) []byte {
+	if path == "" {
+		return []byte(key)
+	}
+	return []byte(path + pathSeparator + key)
+}
+
+func findFirstString(path string, prefix string) (result string, err error) {
+	iter := db.NewIterator(util.BytesPrefix(pathKey(path, prefix)), nil)
 	defer iter.Release()
 	if ok := iter.Next(); ok {
 		return string(iter.Value()), nil
@@ -47,20 +56,20 @@ func findFirstString(path []string, prefix string) (result string, err error) {
 	return "", leveldb.ErrNotFound
 }
 
-func getUInt32(path []string, key string) (uint32, error) {
-	val, err := db.Get(pathToString(path, key), nil)
+func getUInt32(path string, key string) (uint32, error) {
+	val, err := db.Get(pathKey(path, key), nil)
 	if err != nil {
 		return 0, err
 	}
 	return uint32FromBytes(val), nil
 }
 
-func deleteString(tx *leveldb.Transaction, path []string, key string) error {
-	return tx.Delete(pathToString(path, key), nil)
+func deleteString(tx *leveldb.Transaction, path string, key string) error {
+	return tx.Delete(pathKey(path, key), nil)
 }
 
-func putString(tx *leveldb.Transaction, path []string, key string, value string) error {
-	return tx.Put(pathToString(path, key), []byte(value), nil)
+func putString(tx *leveldb.Transaction, path string, key string, value string) error {
+	return tx.Put(pathKey(path, key), []byte(value), nil)
 }
 
 func uint32FromBytes(val []byte) uint32 {
@@ -73,6 +82,6 @@ func uint32ToBytes(val uint32) []byte {
 	return buf[:]
 }
 
-func putUInt32(tx *leveldb.Transaction, path []string, key string, value uint32) error {
-	return tx.Put(pathToString(path, key), uint32ToBytes(value), nil)
+func putUInt32(tx *leveldb.Transaction, path string, key string, value uint32) error {
+	return tx.Put(pathKey(path, key), uint32ToBytes(value), nil)
 }

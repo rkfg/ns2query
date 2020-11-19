@@ -18,7 +18,7 @@ func updateDB() (err error) {
 	for iter.Next() {
 		name := string(iter.Key())
 		if strings.HasPrefix(name, lowercasePrefix) {
-			deleteString(tx, nil, name)
+			deleteString(tx, "", name)
 		} else {
 			if err = putLowercaseIndex(tx, name); err != nil {
 				return
@@ -26,7 +26,7 @@ func updateDB() (err error) {
 			if err = putUInt32(tx, normalPath, name, uint32FromBytes(iter.Value())); err != nil {
 				return
 			}
-			deleteString(tx, nil, name)
+			deleteString(tx, "", name)
 		}
 	}
 	return
