@@ -91,19 +91,12 @@ func versionFlags() string {
 	date := time.Now().Format("01-02-2006 15:04:05 -0700 MST")
 	result := fmt.Sprintf(`-X "main.date=%s"`, date)
 	version := ""
-	tag, err := exec.Command("git", "tag", "--contains", "HEAD").Output()
-	if err != nil || string(tag) == "" {
-		branch, err := exec.Command("git", "branch", "--show-current").Output()
-		if err != nil || string(branch) == "" {
-			commit, err := exec.Command("git", "log", "--pretty=format:%h", "-n1").Output()
-			if err == nil && string(commit) != "" {
-				version = fmt.Sprintf("commit %s", commit)
-			}
-		} else {
-			version = fmt.Sprintf("branch %s", branch)
-		}
-	} else {
+	if tag, err := exec.Command("git", "tag", "--contains", "HEAD").Output(); err == nil && string(tag) != "" {
 		version = string(tag)
+	} else if branch, err := exec.Command("git", "branch", "--show-current").Output(); err == nil && string(tag) != "" {
+		version = fmt.Sprintf("branch %s", branch)
+	} else if commit, err := exec.Command("git", "log", "--pretty=format:%h", "-n1").Output(); err == nil && string(commit) != "" {
+		version = fmt.Sprintf("commit %s", commit)
 	}
 	if version != "" {
 		result = fmt.Sprintf(`%s -X "main.version=%s"`, result, strings.TrimSuffix(version, "\n"))
