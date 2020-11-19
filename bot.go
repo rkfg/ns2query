@@ -178,14 +178,27 @@ func sendMsg(c chan string, s *discordgo.Session) {
 	}
 }
 
-func bot() error {
-	dg, err := discordgo.New("Bot " + config.Token)
-	if err != nil {
-		return err
+func tryConnect(dg *discordgo.Session, retries int) (err error) {
+	for i := 0; i < retries; i++ {
+		err = dg.Open()
+		if err == nil {
+			break
+		} else {
+			log.Printf("Error connecting: %s, retrying...", err)
+		}
+		time.Sleep(1000)
 	}
-	err = dg.Open()
+	return
+}
+
+func bot() (err error) {
+	var dg *discordgo.Session
+	dg, err = discordgo.New("Bot " + config.Token)
 	if err != nil {
-		return err
+		return
+	}
+	if err = tryConnect(dg, 5); err != nil {
+		return
 	}
 	defer dg.Close()
 	if tr, ok := http.DefaultTransport.(*http.Transport); ok {
