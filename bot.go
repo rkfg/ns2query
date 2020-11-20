@@ -178,17 +178,15 @@ func sendMsg(c chan string, s *discordgo.Session) {
 	}
 }
 
-func tryConnect(dg *discordgo.Session, retries int) (err error) {
-	for i := 0; i < retries; i++ {
+func tryConnect(dg *discordgo.Session) (err error) {
+	for {
 		err = dg.Open()
 		if err == nil {
-			break
-		} else {
-			log.Printf("Error connecting: %s, retrying...", err)
+			return
 		}
-		time.Sleep(1000)
+		log.Printf("Error connecting: %s, retrying...", err)
+		time.Sleep(5 * time.Second)
 	}
-	return
 }
 
 func bot() (err error) {
@@ -197,7 +195,7 @@ func bot() (err error) {
 	if err != nil {
 		return
 	}
-	if err = tryConnect(dg, 5); err != nil {
+	if err = tryConnect(dg); err != nil {
 		return
 	}
 	defer dg.Close()
