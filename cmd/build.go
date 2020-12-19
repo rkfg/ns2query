@@ -88,7 +88,7 @@ func build(cfg buildConfig, versionFlags string, wg *sync.WaitGroup) {
 }
 
 func versionFlags() string {
-	date := time.Now().Format("01-02-2006 15:04:05 -0700 MST")
+	date := time.Now().Format("02.01.2006 15:04:05 -0700 MST")
 	result := fmt.Sprintf(`-X "main.date=%s"`, date)
 	version := ""
 	if tag, err := exec.Command("git", "tag", "--contains", "HEAD").Output(); err == nil && string(tag) != "" {
