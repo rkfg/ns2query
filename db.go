@@ -2,9 +2,11 @@ package main
 
 import (
 	"encoding/binary"
+	"log"
 	"strings"
 
 	"github.com/syndtr/goleveldb/leveldb"
+	"github.com/syndtr/goleveldb/leveldb/errors"
 	"github.com/syndtr/goleveldb/leveldb/util"
 )
 
@@ -26,10 +28,11 @@ func commitOrDiscard(tx *leveldb.Transaction, err *error) {
 
 func openDB(dbPath string) (err error) {
 	db, err = leveldb.OpenFile(dbPath, nil)
-	if err != nil {
-		return
+	if e, corrupted := err.(*errors.ErrCorrupted); corrupted {
+		log.Printf("WARNING: database corruption: %s. Attempting to recover...", e)
+		db, err = leveldb.RecoverFile(dbPath, nil)
 	}
-	return nil
+	return
 }
 
 func closeDB() error {
