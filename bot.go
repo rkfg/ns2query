@@ -7,6 +7,7 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"os/exec"
 	"os/signal"
 	"regexp"
 	"strconv"
@@ -95,7 +96,7 @@ func parseFields(fields []string, author *discordgo.User) (response string, err 
 	switch fields[0] {
 	case "status":
 		for i := range config.Servers {
-			srv := &config.Servers[i]
+			srv := config.Servers[i]
 			response += fmt.Sprintf("%s [%s], skill: %d, players: %d\n", srv.Name, srv.currentMap, srv.avgSkill, len(srv.players))
 		}
 	case "skill":
@@ -190,6 +191,11 @@ func tryConnect(dg *discordgo.Session) (err error) {
 }
 
 func bot() (err error) {
+	if tr, ok := http.DefaultTransport.(*http.Transport); ok {
+		log.Println("Adjusting TLS session cache and handshake timeout")
+		tr.TLSClientConfig = &tls.Config{ClientSessionCache: tls.NewLRUClientSessionCache(100)}
+		tr.TLSHandshakeTimeout = 2 * time.Minute
+	}
 	var dg *discordgo.Session
 	dg, err = discordgo.New("Bot " + config.Token)
 	if err != nil {
@@ -199,19 +205,28 @@ func bot() (err error) {
 		return
 	}
 	defer dg.Close()
-	if tr, ok := http.DefaultTransport.(*http.Transport); ok {
-		log.Println("Adjusting TLS session cache")
-		tr.TLSClientConfig.ClientSessionCache = tls.NewLRUClientSessionCache(100)
-	}
 	dg.AddHandler(handleCommand)
 	sendChan := make(chan string, 10)
 	go sendMsg(sendChan, dg)
+	restartChan := make(chan bool)
 	for i := range config.Servers {
-		go query(&config.Servers[i], sendChan)
+		config.Servers[i].restartChan = restartChan
+		go query(config.Servers[i], sendChan)
 	}
 	fmt.Println("Bot is now running.  Press CTRL-C to exit.")
 	sc := make(chan os.Signal, 1)
 	signal.Notify(sc, syscall.SIGINT, syscall.SIGTERM, os.Interrupt)
-	<-sc
+	select {
+	case <-sc:
+	case <-restartChan:
+		db.Close()
+		cmd := exec.Command(os.Args[0], os.Args[1:]...)
+		log.Println("Restarting myself...")
+		err := cmd.Start()
+		if err != nil {
+			log.Println("Error restarting myself:", err)
+		}
+		log.Printf("Restart issued, pid: %d", cmd.Process.Pid)
+	}
 	return nil
 }

@@ -29,6 +29,7 @@ type ns2server struct {
 	lastStatePromotion time.Time
 	currentMap         string
 	avgSkill           int
+	restartChan        chan bool
 }
 
 func (s *ns2server) playersString() string {
@@ -70,7 +71,7 @@ var config struct {
 	ChannelID     string        `json:"channel_id"`
 	DBPath        string        `json:"database_path"`
 	QueryInterval time.Duration `json:"query_interval"`
-	Servers       []ns2server
+	Servers       []*ns2server
 	Seeding       seeding
 }
 

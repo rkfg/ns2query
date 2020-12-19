@@ -3,11 +3,21 @@ package main
 import (
 	"fmt"
 	"log"
+	"net"
 	"strconv"
 	"time"
 
 	"github.com/rumblefrog/go-a2s"
 )
+
+type queryError struct {
+	description string
+	err         error
+}
+
+func (e queryError) Error() string {
+	return fmt.Sprintf(e.description, e.err)
+}
 
 func maybeNotify(srv *ns2server, sendChan chan string) {
 	playersCount := len(srv.players)
@@ -53,48 +63,66 @@ func maybeNotify(srv *ns2server, sendChan chan string) {
 	}
 }
 
-func query(srv *ns2server, sendChan chan string) error {
+func queryServer(client *a2s.Client, srv *ns2server, sendChan chan string) error {
+	info, err := client.QueryInfo()
+	if err != nil {
+		return queryError{"server info query: %s", err}
+	}
+	srv.currentMap = info.Map
+	rules, err := client.QueryRules()
+	if err != nil {
+		return queryError{"rules query: %s", err}
+	}
+	srv.avgSkill = 0
+	avgSkillStr := rules.Rules["AverageSkill"]
+	if avgSkillStr != "nan" && avgSkillStr != "" {
+		avgSkill, err := strconv.ParseFloat(avgSkillStr, 32)
+		if err != nil {
+			return queryError{"parsing avg skill: %s", err}
+		}
+		srv.avgSkill = int(avgSkill)
+	}
+	playersInfo, err := client.QueryPlayer()
+	if err != nil {
+		return queryError{"player query: %s", err}
+	}
+	srv.players = srv.players[:0]
+	for _, p := range playersInfo.Players {
+		srv.players = append(srv.players, p.Name)
+	}
+	maybeNotify(srv, sendChan)
+	return nil
+}
+
+func query(srv *ns2server, sendChan chan string) {
 	client, err := a2s.NewClient(srv.Address)
 	if err != nil {
-		return fmt.Errorf("error creating client: %s", err)
+		log.Println("error creating client:", err)
+		return
 	}
 	defer client.Close()
+	log.Printf("Client created for %s [%s]", srv.Name, srv.Address)
 	srv.currentMap = "<unknown>"
 	srv.avgSkill = 0
 	srv.maxStateToMessage = full
 	srv.lastStateAnnounced = empty
 	for {
-		info, err := client.QueryInfo()
+		err = queryServer(client, srv, sendChan)
 		if err != nil {
-			log.Printf("server info query error: %s", err)
-		} else {
-			srv.currentMap = info.Map
+			log.Printf("Error: %s", err)
 		}
-		rules, err := client.QueryRules()
-		if err != nil {
-			log.Printf("rules query error: %s", err)
-		} else {
-			srv.avgSkill = 0
-			avgSkillStr := rules.Rules["AverageSkill"]
-			if avgSkillStr != "nan" && avgSkillStr != "" {
-				avgSkill, err := strconv.ParseFloat(avgSkillStr, 32)
-				if err != nil {
-					log.Printf("error parsing avg skill: %s", err)
-				} else {
-					srv.avgSkill = int(avgSkill)
-				}
+		if err, ok := err.(queryError); ok {
+			if err, ok := err.err.(*net.OpError); ok && err.Op == "write" {
+				log.Println("Error during sending data (our IP changed?), restarting myself")
+				close(srv.restartChan)
+				return
 			}
 		}
-		playersInfo, err := client.QueryPlayer()
-		if err != nil {
-			log.Printf("player query error: %s", err)
-		} else {
-			srv.players = srv.players[:0]
-			for _, p := range playersInfo.Players {
-				srv.players = append(srv.players, p.Name)
-			}
-			maybeNotify(srv, sendChan)
+		select {
+		case <-time.After(config.QueryInterval * time.Second):
+		case <-srv.restartChan:
+			log.Printf("Restart request received, stopping server polling: %s [%s]", srv.Name, srv.Address)
+			return
 		}
-		time.Sleep(config.QueryInterval * time.Second)
 	}
 }
