@@ -19,23 +19,23 @@ Options:
 `
 	opts, err := docopt.ParseDoc(usage)
 	if err != nil {
-		log.Fatal(err)
+		log.Fatal("error parsing arguments:", err)
 	}
 	if err := loadConfig(opts["-c"].(string)); err != nil {
-		log.Fatal(err)
+		log.Fatal("error loading config:", err)
 	}
 	if err := openDB(config.DBPath); err != nil {
-		log.Fatal(err)
+		log.Fatal("error opening database:", err)
 	}
 	defer closeDB()
 	if update, err := opts.Bool("-u"); err == nil && update {
 		if err := updateDB(); err != nil {
-			log.Fatal(err)
+			log.Fatal("error updating db:", err)
 		}
 		return
 	}
 	err = bot()
 	if err != nil {
-		log.Fatal(err)
+		log.Fatal("error launching bot:", err)
 	}
 }
