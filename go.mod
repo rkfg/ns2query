@@ -8,6 +8,7 @@ require (
 	github.com/docopt/docopt-go v0.0.0-20180111231733-ee0de3bc6815
 	github.com/rumblefrog/go-a2s v1.0.0
 	github.com/syndtr/goleveldb v1.0.0
+	go.etcd.io/bbolt v1.3.5
 )
 
 // temporary override until pull requests #11 and #12 are merged

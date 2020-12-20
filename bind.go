@@ -5,7 +5,7 @@ import (
 	"strings"
 
 	"github.com/bwmarrin/discordgo"
-	"github.com/syndtr/goleveldb/leveldb"
+	"go.etcd.io/bbolt"
 )
 
 func bind(player string, user *discordgo.User) (id uint32, err error) {
@@ -18,43 +18,34 @@ func bind(player string, user *discordgo.User) (id uint32, err error) {
 }
 
 func putBind(playerID uint32, discordUser *discordgo.User) (err error) {
-	var tx *leveldb.Transaction
-	tx, err = db.OpenTransaction()
-	if err != nil {
-		return
-	}
-	defer commitOrDiscard(tx, &err)
-	if err = putUInt32(tx, normalPath, discordUser.String(), playerID); err != nil {
-		return
-	}
-	if err = putLowercaseIndex(tx, discordUser.String()); err != nil {
-		return
-	}
-	return
-}
-
-func putLowercaseIndex(tx *leveldb.Transaction, username string) error {
-	return putString(tx, lowercasePath, strings.ToLower(username), username)
+	return bdb.Update(func(t *bbolt.Tx) (err error) {
+		name := discordUser.String()
+		err = newUsersBucket(t).put(name, playerID)
+		if err != nil {
+			return
+		}
+		return newLowercaseBucket(t).put(name)
+	})
 }
 
 func getBind(username string) (playerID uint32, err error) {
-	playerID, err = getUInt32(normalPath, username)
-	if err == leveldb.ErrNotFound {
-		return 0, fmt.Errorf("player %s isn't in the database. Use `-bind <Steam ID>` to register", username)
-	}
-	if err != nil {
+	err = bdb.View(func(t *bbolt.Tx) (err error) {
+		playerID, err = newUsersBucket(t).get(username)
 		return
+	})
+	if err != nil {
+		return 0, fmt.Errorf("player %s isn't in the database. Use `-bind <Steam ID>` to register", username)
 	}
 	return
 }
 
 func deleteBind(user *discordgo.User) (err error) {
-	var tx *leveldb.Transaction
-	tx, err = db.OpenTransaction()
-	if err != nil {
+	return bdb.Update(func(t *bbolt.Tx) (err error) {
+		err = newUsersBucket(t).del(user.String())
+		if err != nil {
+			return
+		}
+		err = newLowercaseBucket(t).del(strings.ToLower(user.String()))
 		return
-	}
-	defer commitOrDiscard(tx, &err)
-	err = deleteString(tx, normalPath, user.String())
-	return
+	})
 }

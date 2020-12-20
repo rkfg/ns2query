@@ -17,6 +17,7 @@ import (
 
 	"github.com/Philipp15b/go-steamapi"
 	"github.com/bwmarrin/discordgo"
+	"go.etcd.io/bbolt"
 )
 
 const (
@@ -41,7 +42,11 @@ var (
 )
 
 func playerIDFromDiscordName(username string) (uint32, error) {
-	discordName, err := findFirstString(lowercasePath, username)
+	var discordName string
+	err := bdb.View(func(t *bbolt.Tx) (err error) {
+		discordName, err = newLowercaseBucket(t).findFirstString(username)
+		return
+	})
 	if err != nil {
 		return 0, fmt.Errorf("discord user name starting with '%s' was not found", username)
 	}
@@ -219,7 +224,7 @@ func bot() (err error) {
 	select {
 	case <-sc:
 	case <-restartChan:
-		db.Close()
+		ldb.Close()
 		cmd := exec.Command(os.Args[0], os.Args[1:]...)
 		log.Println("Restarting myself...")
 		err := cmd.Start()

@@ -12,7 +12,7 @@ import (
 
 const pathSeparator = "\x00"
 
-var db *leveldb.DB
+var ldb *leveldb.DB
 
 // commitOrDiscard either commits or discard the transaction depending on the error presence.
 // This function is supposed to be called in defer.
@@ -27,16 +27,16 @@ func commitOrDiscard(tx *leveldb.Transaction, err *error) {
 }
 
 func openDB(dbPath string) (err error) {
-	db, err = leveldb.OpenFile(dbPath, nil)
+	ldb, err = leveldb.OpenFile(dbPath, nil)
 	if e, corrupted := err.(*errors.ErrCorrupted); corrupted {
 		log.Printf("WARNING: database corruption: %s. Attempting to recover...", e)
-		db, err = leveldb.RecoverFile(dbPath, nil)
+		ldb, err = leveldb.RecoverFile(dbPath, nil)
 	}
 	return
 }
 
 func closeDB() error {
-	return db.Close()
+	return ldb.Close()
 }
 
 func makePath(path ...string) string {
@@ -51,7 +51,7 @@ func pathKey(path string, key string) []byte {
 }
 
 func findFirstString(path string, prefix string) (result string, err error) {
-	iter := db.NewIterator(util.BytesPrefix(pathKey(path, prefix)), nil)
+	iter := ldb.NewIterator(util.BytesPrefix(pathKey(path, prefix)), nil)
 	defer iter.Release()
 	if ok := iter.Next(); ok {
 		return string(iter.Value()), nil
@@ -60,7 +60,7 @@ func findFirstString(path string, prefix string) (result string, err error) {
 }
 
 func getUInt32(path string, key string) (uint32, error) {
-	val, err := db.Get(pathKey(path, key), nil)
+	val, err := ldb.Get(pathKey(path, key), nil)
 	if err != nil {
 		return 0, err
 	}
@@ -87,4 +87,8 @@ func uint32ToBytes(val uint32) []byte {
 
 func putUInt32(tx *leveldb.Transaction, path string, key string, value uint32) error {
 	return tx.Put(pathKey(path, key), uint32ToBytes(value), nil)
+}
+
+func putLowercaseIndex(tx *leveldb.Transaction, username string) error {
+	return putString(tx, lowercasePath, strings.ToLower(username), username)
 }
