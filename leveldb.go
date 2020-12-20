@@ -7,7 +7,6 @@ import (
 
 	"github.com/syndtr/goleveldb/leveldb"
 	"github.com/syndtr/goleveldb/leveldb/errors"
-	"github.com/syndtr/goleveldb/leveldb/util"
 )
 
 const pathSeparator = "\x00"
@@ -48,23 +47,6 @@ func pathKey(path string, key string) []byte {
 		return []byte(key)
 	}
 	return []byte(path + pathSeparator + key)
-}
-
-func findFirstString(path string, prefix string) (result string, err error) {
-	iter := ldb.NewIterator(util.BytesPrefix(pathKey(path, prefix)), nil)
-	defer iter.Release()
-	if ok := iter.Next(); ok {
-		return string(iter.Value()), nil
-	}
-	return "", leveldb.ErrNotFound
-}
-
-func getUInt32(path string, key string) (uint32, error) {
-	val, err := ldb.Get(pathKey(path, key), nil)
-	if err != nil {
-		return 0, err
-	}
-	return uint32FromBytes(val), nil
 }
 
 func deleteString(tx *leveldb.Transaction, path string, key string) error {
