@@ -96,8 +96,8 @@ func loadConfigFilename(filename string) error {
 	if config.Token == "" {
 		return fmt.Errorf("specify token in config.json")
 	}
-	if config.LevelDBPath == "" {
-		return fmt.Errorf("specify database_path in config.json")
+	if config.BoltDBPath == "" {
+		return fmt.Errorf("specify bdb_database_path in config.json")
 	}
 	return nil
 }
