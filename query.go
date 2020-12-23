@@ -7,6 +7,7 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/bwmarrin/discordgo"
 	"github.com/rumblefrog/go-a2s"
 )
 
@@ -19,7 +20,7 @@ func (e queryError) Error() string {
 	return fmt.Sprintf(e.description, e.err)
 }
 
-func maybeNotify(srv *ns2server, sendChan chan string) {
+func maybeNotify(srv *ns2server, sendChan chan discordgo.MessageSend) {
 	playersCount := len(srv.players)
 	newState := empty
 	if playersCount < config.Seeding.Seeding {
@@ -38,18 +39,52 @@ func maybeNotify(srv *ns2server, sendChan chan string) {
 		srv.serverState = newState
 		if srv.lastStateAnnounced != newState {
 			srv.lastStateAnnounced = newState
+			specSlots := srv.SpecSlots
+			playerSlots := srv.PlayerSlots - len(srv.players)
+			freeSlots := playerSlots + srv.SpecSlots
+			if freeSlots < specSlots {
+				specSlots = freeSlots
+			}
+			if playerSlots < 0 {
+				playerSlots = 0
+			}
+			msg := discordgo.MessageSend{Embed: &discordgo.MessageEmbed{
+				Title: fmt.Sprintf("%s [%s]", srv.Name, srv.currentMap),
+				Fields: []*discordgo.MessageEmbedField{
+					{
+						Name:   "Players",
+						Value:  fmt.Sprint(len(srv.players)),
+						Inline: true,
+					},
+					{
+						Name:   "Player slots",
+						Value:  fmt.Sprint(playerSlots),
+						Inline: true,
+					},
+					{
+						Name:   "Spectator slots",
+						Value:  fmt.Sprint(specSlots),
+						Inline: true,
+					},
+				},
+				Footer: &discordgo.MessageEmbedFooter{Text: fmt.Sprintf("Skill: %d", srv.avgSkill)},
+			},
+			}
 			switch newState {
 			case seedingstarted:
-				sendChan <- fmt.Sprintf("%s [%s] started seeding! Skill: %d. There are %d players there currently: %s",
-					srv.Name, srv.currentMap, srv.avgSkill, len(srv.players), srv.playersString())
+				msg.Embed.Description = "Seeding started! Players on the server: " + srv.playersString()
+				msg.Embed.Color = 0x009900
 				srv.maxStateToMessage = specsonly
+				sendChan <- msg
 			case almostfull:
-				sendChan <- fmt.Sprintf("%s [%s] is almost full! Skill: %d. There are %d players there currently",
-					srv.Name, srv.currentMap, srv.avgSkill, len(srv.players))
+				msg.Embed.Description = "Server is almost full!"
+				msg.Embed.Color = 0xcc9900
+				sendChan <- msg
 			case specsonly:
+				msg.Embed.Description = "Server is full but you can still make it!"
+				msg.Embed.Color = 0xff3300
 				srv.maxStateToMessage = seedingstarted
-				sendChan <- fmt.Sprintf("%s [%s] is full but you can still make it! Skill: %d. There are %d spectator slots available currently",
-					srv.Name, srv.currentMap, srv.avgSkill, srv.PlayerSlots+srv.SpecSlots-len(srv.players))
+				sendChan <- msg
 			}
 		}
 	} else {
@@ -63,7 +98,7 @@ func maybeNotify(srv *ns2server, sendChan chan string) {
 	}
 }
 
-func queryServer(client *a2s.Client, srv *ns2server, sendChan chan string) error {
+func queryServer(client *a2s.Client, srv *ns2server, sendChan chan discordgo.MessageSend) error {
 	info, err := client.QueryInfo()
 	if err != nil {
 		return queryError{"server info query: %s", err}
@@ -94,7 +129,7 @@ func queryServer(client *a2s.Client, srv *ns2server, sendChan chan string) error
 	return nil
 }
 
-func query(srv *ns2server, sendChan chan string) {
+func query(srv *ns2server, sendChan chan discordgo.MessageSend) {
 	client, err := a2s.NewClient(srv.Address)
 	if err != nil {
 		log.Println("error creating client:", err)

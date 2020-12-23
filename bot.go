@@ -217,9 +217,10 @@ func handleCommand(s *discordgo.Session, m *discordgo.MessageCreate) {
 	}
 }
 
-func sendMsg(c chan string, s *discordgo.Session) {
+func sendMsg(c chan discordgo.MessageSend, s *discordgo.Session) {
 	for {
-		s.ChannelMessageSend(config.ChannelID, <-c)
+		msg := <-c
+		s.ChannelMessageSendComplex(config.ChannelID, &msg)
 		time.Sleep(time.Second)
 	}
 }
@@ -251,7 +252,7 @@ func bot() (err error) {
 	}
 	defer dg.Close()
 	dg.AddHandler(handleCommand)
-	sendChan := make(chan string, 10)
+	sendChan := make(chan discordgo.MessageSend, 10)
 	go sendMsg(sendChan, dg)
 	restartChan := make(chan bool)
 	for i := range config.Servers {
