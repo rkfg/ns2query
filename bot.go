@@ -77,32 +77,60 @@ func playerIDFromSteamID(player string) (uint32, error) {
 	return steamid.As32Bit(), nil
 }
 
-func getSkill(playerID uint32) (string, error) {
+func getPlayerAvatar(playerID uint32) string {
+	sum, err := steamapi.GetPlayerSummaries([]uint64{steamapi.NewIdFrom32bit(playerID).As64Bit()}, config.SteamKey)
+	if err != nil {
+		log.Printf("Error getting avatar for player %d: %s", playerID, err)
+		return ""
+	}
+	if len(sum) > 0 {
+		return sum[0].SmallAvatarURL
+	}
+	log.Printf("No data found for player %d", playerID)
+	return ""
+}
+
+func getSkill(playerID uint32) (*discordgo.MessageSend, error) {
 	url := fmt.Sprintf("http://hive2.ns2cdt.com/api/get/playerData/%d", playerID)
 	hiveResp, err := http.Get(url)
 	if err != nil {
-		return "", err
+		return nil, err
 	}
 	var skill hive
 	json.NewDecoder(hiveResp.Body).Decode(&skill)
 	if skill.Alias == "" {
-		return "", fmt.Errorf("player id %d isn't present on Hive", playerID)
+		return nil, fmt.Errorf("player id %d isn't present on Hive", playerID)
 	}
-	return fmt.Sprintf(
-		`%s (ID: %d) skill breakdown:
-Marine skill: %d (commander: %d)
-Alien skill: %d (commander: %d)`, skill.Alias, playerID,
-		skill.Skill+skill.SkillOffset, skill.CommSkill+skill.CommSkillOffset,
-		skill.Skill-skill.SkillOffset, skill.CommSkill-skill.CommSkillOffset), nil
+	return &discordgo.MessageSend{Embed: &discordgo.MessageEmbed{
+		Description: "Skill breakdown",
+		Author:      &discordgo.MessageEmbedAuthor{Name: skill.Alias, IconURL: getPlayerAvatar(playerID)},
+		Fields: []*discordgo.MessageEmbedField{
+			{
+				Name:   "Marine (field/comm)",
+				Value:  fmt.Sprintf("%d/%d", skill.Skill+skill.SkillOffset, skill.CommSkill+skill.CommSkillOffset),
+				Inline: true,
+			},
+			{
+				Name:   "Alien (field/comm)",
+				Value:  fmt.Sprintf("%d/%d", skill.Skill-skill.SkillOffset, skill.CommSkill-skill.CommSkillOffset),
+				Inline: true,
+			},
+		},
+	}}, nil
 }
 
-func parseFields(fields []string, author *discordgo.User) (response string, err error) {
+func parseFields(fields []string, author *discordgo.User) (response *discordgo.MessageSend, err error) {
 	var playerID uint32
 	switch fields[0] {
 	case "status":
+		response = &discordgo.MessageSend{Embed: &discordgo.MessageEmbed{}}
 		for i := range config.Servers {
 			srv := config.Servers[i]
-			response += fmt.Sprintf("%s [%s], skill: %d, players: %d\n", srv.Name, srv.currentMap, srv.avgSkill, len(srv.players))
+			response.Embed.Fields = append(response.Embed.Fields, &discordgo.MessageEmbedField{
+				Name:   fmt.Sprintf("%s [%s]", srv.Name, srv.currentMap),
+				Value:  fmt.Sprintf("skill: %d, players: %d", srv.avgSkill, len(srv.players)),
+				Inline: true,
+			})
 		}
 	case "skill":
 		if len(fields) == 1 {
@@ -123,35 +151,47 @@ func parseFields(fields []string, author *discordgo.User) (response string, err 
 		}
 	case "bind":
 		if len(fields) > 2 {
-			return "", fmt.Errorf("invalid argument for `-bind`")
+			return nil, fmt.Errorf("invalid argument for `-bind`")
 		}
 		if len(fields) == 2 {
 			playerID, err = bind(fields[1], author)
 			if err != nil {
 				return
 			}
-			return fmt.Sprintf("User %s has been bound to player ID %d. You can use `-skill` without arguments now.",
-				author.String(), playerID), nil
+			return &discordgo.MessageSend{Content: fmt.Sprintf("User %s has been bound to player ID %d. You can use `-skill` without arguments now.",
+				author.String(), playerID)}, nil
 		}
 		err = deleteBind(author)
 		if err != nil {
 			return
 		}
-		return fmt.Sprintf("User %s has been unbound.", author.String()), nil
+		return &discordgo.MessageSend{Content: fmt.Sprintf("User %s has been unbound.", author.String())}, nil
 	case "version":
-		return versionString(), nil
+		return versionEmbed(), nil
 	case "help":
-		return `Commands:
-	-status				show server maps, skills and player count.
-	-skill [Steam ID]	show skill breakdown for player, the argument can be omitted if the player is bound. Use ` + "`!discordname`" +
-				` argument to query other registered players; no need to type the whole name, several characters should be enough.
-	-bind [Steam ID]	bind your Discord accound to the specified player so you can use ` + "`-skill`" +
-				` without argument. Use ` + "`-bind`" + ` without argument to unbind yourself.
-	-version			show current bot version, build date and source code URL.
-	
-If your Steam profile page URL looks like <https://steamcommunity.com/profiles/76561197960287930>, use 76561197960287930 as a -skill argument.
-If it looks like <https://steamcommunity.com/id/gabelogannewell>, use gabelogannewell instead. Or just pass the entire URL, we don't judge!`,
-			nil
+		return &discordgo.MessageSend{Embed: &discordgo.MessageEmbed{Title: "Commands",
+			Description: "Use your Steam profile page URL or its last part as a [Steam ID] argument.",
+			Fields: []*discordgo.MessageEmbedField{
+				{
+					Name:  "-status",
+					Value: "show server maps, skills and player count.",
+				},
+				{
+					Name: "-skill [Steam ID]",
+					Value: "show skill breakdown for player, the argument can be omitted if the player is bound. Use `!discordname` " +
+						"argument to query other registered players; no need to type the whole name, several characters should be enough.",
+				},
+				{
+					Name: "-bind [Steam ID]",
+					Value: "bind your Discord accound to the specified player so you can use `-skill`" +
+						"without argument. Use `-bind` without argument to unbind yourself.",
+				},
+				{
+					Name:  "-version",
+					Value: "show current bot version, build date and source code URL.",
+				},
+			},
+		}}, nil
 	}
 	return
 }
@@ -169,10 +209,10 @@ func handleCommand(s *discordgo.Session, m *discordgo.MessageCreate) {
 	if len(fields) > 0 {
 		response, err := parseFields(fields, m.Author)
 		if err != nil {
-			response = "Error: " + err.Error()
+			response = &discordgo.MessageSend{Content: "Error: " + err.Error()}
 		}
-		if response != "" {
-			s.ChannelMessageSend(m.ChannelID, response)
+		if response != nil {
+			s.ChannelMessageSendComplex(m.ChannelID, response)
 		}
 	}
 }
