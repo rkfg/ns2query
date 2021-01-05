@@ -34,11 +34,17 @@ type hive struct {
 	CommSkillOffset int `json:"comm_skill_offset"`
 }
 
+type message struct {
+	*discordgo.MessageSend
+	channelID string
+}
+
 var (
 	vanityRegex   = regexp.MustCompile(`https://steamcommunity.com/id/([^/]*)/?`)
 	profileRegex  = regexp.MustCompile(`https://steamcommunity.com/profiles/(\d*)/?`)
 	lowercasePath = makePath("discord", "users", "lowercase")
 	normalPath    = makePath("discord", "users", "normal")
+	sendChan      = make(chan message, 10)
 )
 
 func playerIDFromDiscordName(username string) (uint32, error) {
@@ -119,18 +125,13 @@ func getSkill(playerID uint32) (*discordgo.MessageSend, error) {
 	}}, nil
 }
 
-func parseFields(fields []string, author *discordgo.User) (response *discordgo.MessageSend, err error) {
+func parseFields(fields []string, author *discordgo.User, channelID string) (response *discordgo.MessageSend, err error) {
 	var playerID uint32
 	switch fields[0] {
 	case "status":
-		response = &discordgo.MessageSend{Embed: &discordgo.MessageEmbed{}}
 		for i := range config.Servers {
-			srv := config.Servers[i]
-			response.Embed.Fields = append(response.Embed.Fields, &discordgo.MessageEmbedField{
-				Name:   fmt.Sprintf("%s [%s]", srv.Name, srv.currentMap),
-				Value:  fmt.Sprintf("skill: %d, players: %d", srv.avgSkill, len(srv.players)),
-				Inline: true,
-			})
+			msg := serverStatus(config.Servers[i])
+			sendChan <- message{msg, channelID}
 		}
 	case "skill":
 		if len(fields) == 1 {
@@ -207,20 +208,24 @@ func handleCommand(s *discordgo.Session, m *discordgo.MessageCreate) {
 	msg = strings.TrimPrefix(msg, cmdPrefix)
 	fields := strings.Fields(msg)
 	if len(fields) > 0 {
-		response, err := parseFields(fields, m.Author)
+		response, err := parseFields(fields, m.Author, m.ChannelID)
 		if err != nil {
 			response = &discordgo.MessageSend{Content: "Error: " + err.Error()}
 		}
 		if response != nil {
-			s.ChannelMessageSendComplex(m.ChannelID, response)
+			sendChan <- message{response, m.ChannelID}
 		}
 	}
 }
 
-func sendMsg(c chan discordgo.MessageSend, s *discordgo.Session) {
+func sendMsg(c chan message, s *discordgo.Session) {
 	for {
 		msg := <-c
-		s.ChannelMessageSendComplex(config.ChannelID, &msg)
+		channelID := msg.channelID
+		if channelID == "" {
+			channelID = config.ChannelID
+		}
+		s.ChannelMessageSendComplex(channelID, msg.MessageSend)
 		time.Sleep(time.Second)
 	}
 }
@@ -252,12 +257,11 @@ func bot() (err error) {
 	}
 	defer dg.Close()
 	dg.AddHandler(handleCommand)
-	sendChan := make(chan discordgo.MessageSend, 10)
 	go sendMsg(sendChan, dg)
 	restartChan := make(chan bool)
 	for i := range config.Servers {
 		config.Servers[i].restartChan = restartChan
-		go query(config.Servers[i], sendChan)
+		go query(config.Servers[i])
 	}
 	fmt.Println("Bot is now running.  Press CTRL-C to exit.")
 	sc := make(chan os.Signal, 1)

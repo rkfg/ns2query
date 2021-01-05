@@ -6,8 +6,6 @@ import (
 	"strconv"
 	"testing"
 	"time"
-
-	"github.com/bwmarrin/discordgo"
 )
 
 func TestMain(t *testing.M) {
@@ -18,10 +16,9 @@ func TestMain(t *testing.M) {
 }
 
 func notif(t *testing.T, srv *ns2server, expected string) {
-	sendChan := make(chan discordgo.MessageSend)
 	q := make(chan bool)
 	go func() {
-		maybeNotify(srv, sendChan)
+		maybeNotify(srv)
 		close(q)
 	}()
 	select {

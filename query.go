@@ -20,7 +20,50 @@ func (e queryError) Error() string {
 	return fmt.Sprintf(e.description, e.err)
 }
 
-func maybeNotify(srv *ns2server, sendChan chan discordgo.MessageSend) {
+func serverStatus(srv *ns2server) *discordgo.MessageSend {
+	specSlots := srv.SpecSlots
+	playerSlots := srv.PlayerSlots - len(srv.players)
+	freeSlots := playerSlots + srv.SpecSlots
+	if freeSlots < specSlots {
+		specSlots = freeSlots
+	}
+	if playerSlots < 0 {
+		playerSlots = 0
+	}
+	msg := discordgo.MessageSend{Embed: &discordgo.MessageEmbed{
+		Title: fmt.Sprintf("%s [%s]", srv.Name, srv.currentMap),
+		Fields: []*discordgo.MessageEmbedField{
+			{
+				Name:   "Players",
+				Value:  fmt.Sprint(len(srv.players)),
+				Inline: true,
+			},
+			{
+				Name:   "Player slots",
+				Value:  fmt.Sprint(playerSlots),
+				Inline: true,
+			},
+			{
+				Name:   "Spectator slots",
+				Value:  fmt.Sprint(specSlots),
+				Inline: true,
+			},
+		},
+		Footer: &discordgo.MessageEmbedFooter{Text: fmt.Sprintf("Skill: %d", srv.avgSkill)},
+	},
+	}
+	playersCount := len(srv.players)
+	if playersCount < config.Seeding.AlmostFull {
+		msg.Embed.Color = 0x009900
+	} else if playersCount < srv.PlayerSlots {
+		msg.Embed.Color = 0xcc9900
+	} else if playersCount >= srv.PlayerSlots {
+		msg.Embed.Color = 0xff3300
+	}
+	return &msg
+}
+
+func maybeNotify(srv *ns2server) {
 	playersCount := len(srv.players)
 	newState := empty
 	if playersCount < config.Seeding.Seeding {
@@ -39,52 +82,19 @@ func maybeNotify(srv *ns2server, sendChan chan discordgo.MessageSend) {
 		srv.serverState = newState
 		if srv.lastStateAnnounced != newState {
 			srv.lastStateAnnounced = newState
-			specSlots := srv.SpecSlots
-			playerSlots := srv.PlayerSlots - len(srv.players)
-			freeSlots := playerSlots + srv.SpecSlots
-			if freeSlots < specSlots {
-				specSlots = freeSlots
-			}
-			if playerSlots < 0 {
-				playerSlots = 0
-			}
-			msg := discordgo.MessageSend{Embed: &discordgo.MessageEmbed{
-				Title: fmt.Sprintf("%s [%s]", srv.Name, srv.currentMap),
-				Fields: []*discordgo.MessageEmbedField{
-					{
-						Name:   "Players",
-						Value:  fmt.Sprint(len(srv.players)),
-						Inline: true,
-					},
-					{
-						Name:   "Player slots",
-						Value:  fmt.Sprint(playerSlots),
-						Inline: true,
-					},
-					{
-						Name:   "Spectator slots",
-						Value:  fmt.Sprint(specSlots),
-						Inline: true,
-					},
-				},
-				Footer: &discordgo.MessageEmbedFooter{Text: fmt.Sprintf("Skill: %d", srv.avgSkill)},
-			},
-			}
+			msg := serverStatus(srv)
 			switch newState {
 			case seedingstarted:
 				msg.Embed.Description = "Seeding started! Players on the server: " + srv.playersString()
-				msg.Embed.Color = 0x009900
 				srv.maxStateToMessage = specsonly
-				sendChan <- msg
+				sendChan <- message{MessageSend: msg}
 			case almostfull:
 				msg.Embed.Description = "Server is almost full!"
-				msg.Embed.Color = 0xcc9900
-				sendChan <- msg
+				sendChan <- message{MessageSend: msg}
 			case specsonly:
 				msg.Embed.Description = "Server is full but you can still make it!"
-				msg.Embed.Color = 0xff3300
 				srv.maxStateToMessage = seedingstarted
-				sendChan <- msg
+				sendChan <- message{MessageSend: msg}
 			}
 		}
 	} else {
@@ -98,7 +108,7 @@ func maybeNotify(srv *ns2server, sendChan chan discordgo.MessageSend) {
 	}
 }
 
-func queryServer(client *a2s.Client, srv *ns2server, sendChan chan discordgo.MessageSend) error {
+func queryServer(client *a2s.Client, srv *ns2server) error {
 	info, err := client.QueryInfo()
 	if err != nil {
 		return queryError{"server info query: %s", err}
@@ -125,11 +135,11 @@ func queryServer(client *a2s.Client, srv *ns2server, sendChan chan discordgo.Mes
 	for _, p := range playersInfo.Players {
 		srv.players = append(srv.players, p.Name)
 	}
-	maybeNotify(srv, sendChan)
+	maybeNotify(srv)
 	return nil
 }
 
-func query(srv *ns2server, sendChan chan discordgo.MessageSend) {
+func query(srv *ns2server) {
 	client, err := a2s.NewClient(srv.Address)
 	if err != nil {
 		log.Println("error creating client:", err)
@@ -142,7 +152,7 @@ func query(srv *ns2server, sendChan chan discordgo.MessageSend) {
 	srv.maxStateToMessage = full
 	srv.lastStateAnnounced = empty
 	for {
-		err = queryServer(client, srv, sendChan)
+		err = queryServer(client, srv)
 		if err != nil {
 			log.Printf("Error: %s", err)
 		}
