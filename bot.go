@@ -2,22 +2,17 @@ package main
 
 import (
 	"crypto/tls"
-	"encoding/json"
 	"fmt"
 	"log"
 	"net/http"
 	"os"
 	"os/exec"
 	"os/signal"
-	"regexp"
-	"strconv"
 	"strings"
 	"syscall"
 	"time"
 
-	"github.com/Philipp15b/go-steamapi"
 	"github.com/bwmarrin/discordgo"
-	"go.etcd.io/bbolt"
 )
 
 const (
@@ -26,104 +21,14 @@ const (
 	discordPrefix   = "!"
 )
 
-type hive struct {
-	Alias           string
-	Skill           int
-	SkillOffset     int `json:"skill_offset"`
-	CommSkill       int `json:"comm_skill"`
-	CommSkillOffset int `json:"comm_skill_offset"`
-}
-
 type message struct {
 	*discordgo.MessageSend
 	channelID string
 }
 
 var (
-	vanityRegex   = regexp.MustCompile(`https://steamcommunity.com/id/([^/]*)/?`)
-	profileRegex  = regexp.MustCompile(`https://steamcommunity.com/profiles/(\d*)/?`)
-	lowercasePath = makePath("discord", "users", "lowercase")
-	normalPath    = makePath("discord", "users", "normal")
-	sendChan      = make(chan message, 10)
+	sendChan = make(chan message, 10)
 )
-
-func playerIDFromDiscordName(username string) (uint32, error) {
-	var discordName string
-	err := bdb.View(func(t *bbolt.Tx) (err error) {
-		discordName, err = newLowercaseBucket(t).findFirstString(username)
-		return
-	})
-	if err != nil {
-		return 0, fmt.Errorf("discord user name starting with '%s' was not found", username)
-	}
-	return getBind(discordName)
-}
-
-func playerIDFromSteamID(player string) (uint32, error) {
-	vanityName := vanityRegex.FindStringSubmatch(player)
-	if vanityName != nil {
-		player = vanityName[1]
-	} else {
-		profileID := profileRegex.FindStringSubmatch(player)
-		if profileID != nil {
-			player = profileID[1]
-		}
-	}
-	steamid, err := steamapi.NewIdFromString(player)
-	if err != nil {
-		steamid, err = steamapi.NewIdFromVanityUrl(player, config.SteamKey)
-		if err != nil {
-			id64, err := strconv.ParseUint(player, 10, 64)
-			if err != nil {
-				return 0, fmt.Errorf("steam ID %s not found", player)
-			}
-			steamid = steamapi.NewIdFrom64bit(id64)
-		}
-	}
-	return steamid.As32Bit(), nil
-}
-
-func getPlayerAvatar(playerID uint32) string {
-	sum, err := steamapi.GetPlayerSummaries([]uint64{steamapi.NewIdFrom32bit(playerID).As64Bit()}, config.SteamKey)
-	if err != nil {
-		log.Printf("Error getting avatar for player %d: %s", playerID, err)
-		return ""
-	}
-	if len(sum) > 0 {
-		return sum[0].SmallAvatarURL
-	}
-	log.Printf("No data found for player %d", playerID)
-	return ""
-}
-
-func getSkill(playerID uint32) (*discordgo.MessageSend, error) {
-	url := fmt.Sprintf("http://hive2.ns2cdt.com/api/get/playerData/%d", playerID)
-	hiveResp, err := http.Get(url)
-	if err != nil {
-		return nil, err
-	}
-	var skill hive
-	json.NewDecoder(hiveResp.Body).Decode(&skill)
-	if skill.Alias == "" {
-		return nil, fmt.Errorf("player id %d isn't present on Hive", playerID)
-	}
-	return &discordgo.MessageSend{Embed: &discordgo.MessageEmbed{
-		Description: "Skill breakdown",
-		Author:      &discordgo.MessageEmbedAuthor{Name: skill.Alias, IconURL: getPlayerAvatar(playerID)},
-		Fields: []*discordgo.MessageEmbedField{
-			{
-				Name:   "Marine (field/comm)",
-				Value:  fmt.Sprintf("%d/%d", skill.Skill+skill.SkillOffset, skill.CommSkill+skill.CommSkillOffset),
-				Inline: true,
-			},
-			{
-				Name:   "Alien (field/comm)",
-				Value:  fmt.Sprintf("%d/%d", skill.Skill-skill.SkillOffset, skill.CommSkill-skill.CommSkillOffset),
-				Inline: true,
-			},
-		},
-	}}, nil
-}
 
 func parseFields(fields []string, author *discordgo.User, channelID string) (response *discordgo.MessageSend, err error) {
 	var playerID uint32

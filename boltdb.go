@@ -12,6 +12,8 @@ var (
 	bdb                 *bbolt.DB
 	discordBucketName   = []byte("discord_to_steamid")
 	lowercaseBucketName = []byte("lowercase_to_normalcase")
+	lowercasePath       = makePath("discord", "users", "lowercase")
+	normalPath          = makePath("discord", "users", "normal")
 )
 
 type usersBucket struct {
