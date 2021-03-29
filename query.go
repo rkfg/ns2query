@@ -11,6 +11,10 @@ import (
 	"github.com/rumblefrog/go-a2s"
 )
 
+const (
+	timeFormat = "2 Jan 2006 15:04:05 -0700"
+)
+
 type queryError struct {
 	description string
 	err         error
@@ -51,6 +55,9 @@ func serverStatus(srv *ns2server) *discordgo.MessageSend {
 		},
 		Footer: &discordgo.MessageEmbedFooter{Text: fmt.Sprintf("Skill: %d", srv.avgSkill)},
 	},
+	}
+	if srv.failures > config.FailureLimit && srv.downSince != nil {
+		msg.Embed.Title = fmt.Sprintf("%s [%s] currently DOWN since %s", srv.Name, srv.currentMap, srv.downSince.Format(timeFormat))
 	}
 	playersCount := len(srv.players)
 	if playersCount < config.Seeding.AlmostFull {
@@ -155,6 +162,19 @@ func query(srv *ns2server) {
 		err = queryServer(client, srv)
 		if err != nil {
 			log.Printf("Error: %s", err)
+			srv.failures++
+			if srv.failures > config.FailureLimit && srv.downSince == nil {
+				now := time.Now()
+				srv.downSince = &now
+				sendChan <- message{MessageSend: &discordgo.MessageSend{Content: fmt.Sprintf("Server %s is down!", srv.Name)}}
+			}
+		} else {
+			if srv.failures > config.FailureLimit && srv.downSince != nil {
+				sendChan <- message{MessageSend: &discordgo.MessageSend{Content: fmt.Sprintf("Server %s is back up! Was down since: %s",
+					srv.Name, srv.downSince.Format(timeFormat))}}
+				srv.downSince = nil
+			}
+			srv.failures = 0
 		}
 		if err, ok := err.(queryError); ok {
 			if err, ok := err.err.(*net.OpError); ok && err.Op == "write" {

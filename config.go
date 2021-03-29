@@ -30,6 +30,8 @@ type ns2server struct {
 	currentMap         string
 	avgSkill           int
 	restartChan        chan bool
+	failures           int
+	downSince          *time.Time
 }
 
 func (s *ns2server) playersString() string {
@@ -72,6 +74,7 @@ var config struct {
 	LevelDBPath   string        `json:"ldb_database_path"`
 	BoltDBPath    string        `json:"bdb_database_path"`
 	QueryInterval time.Duration `json:"query_interval"`
+	FailureLimit  int           `json:"failure_limit"`
 	Servers       []*ns2server
 	Seeding       seeding
 }
