@@ -164,7 +164,7 @@ func query(srv *ns2server) {
 			log.Printf("Error: %s", err)
 			srv.failures++
 			if srv.failures > config.FailureLimit && srv.downSince == nil {
-				now := time.Now()
+				now := time.Now().In(time.UTC)
 				srv.downSince = &now
 				sendChan <- message{MessageSend: &discordgo.MessageSend{Content: fmt.Sprintf("Server %s is down!", srv.Name)}}
 			}
