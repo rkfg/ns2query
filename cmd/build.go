@@ -73,10 +73,10 @@ func pack(cfg buildConfig, wg *sync.WaitGroup) {
 		panic(fmt.Sprintf("Build failed! Error compressing %s to %s: %s", cfg.binaryName(), cfg.zipName(), err))
 	}
 	os.Remove(cfg.binaryName())
-	wg.Done()
 }
 
 func build(cfg buildConfig, versionFlags string, wg *sync.WaitGroup) {
+	defer wg.Done()
 	cmd := exec.Command("go", "build", "-ldflags", "-s -w "+versionFlags+" -extldflags -static", "-o", cfg.binaryName())
 	cmd.Env = append(os.Environ(), "GOOS="+cfg.os, "GOARCH="+cfg.arch)
 	out, err := cmd.CombinedOutput()
@@ -84,7 +84,6 @@ func build(cfg buildConfig, versionFlags string, wg *sync.WaitGroup) {
 		panic(fmt.Sprintf("Build failed! Config: %+v, error: %s, args: %s, output:\n%s", cfg, err, cmd.Args, out))
 	}
 	pack(cfg, wg)
-	wg.Done()
 }
 
 func versionFlags() string {
@@ -110,7 +109,7 @@ func main() {
 	wg := sync.WaitGroup{}
 	flags := versionFlags()
 	for _, cfg := range configs {
-		wg.Add(2)
+		wg.Add(1)
 		go build(cfg, flags, &wg)
 	}
 	wg.Wait()
