@@ -52,10 +52,6 @@ func (l lowercaseBucket) put(name string) error {
 	return l.Put([]byte(strings.ToLower(name)), []byte(name))
 }
 
-func (l lowercaseBucket) get(key string) string {
-	return string(l.Get([]byte(key)))
-}
-
 func (l lowercaseBucket) findFirstString(prefix string) (result string, err error) {
 	c := l.Cursor()
 	k, v := c.Seek([]byte(prefix))
