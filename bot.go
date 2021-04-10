@@ -32,7 +32,7 @@ var (
 
 func parseFields(fields []string, author *discordgo.User, channelID string) (response *discordgo.MessageSend, err error) {
 	var playerID uint32
-	switch fields[0] {
+	switch strings.ToLower(fields[0]) {
 	case "status":
 		for i := range config.Servers {
 			msg := serverStatus(config.Servers[i])
