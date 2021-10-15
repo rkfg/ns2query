@@ -2,6 +2,7 @@ package main
 
 import (
 	"bytes"
+	"encoding/binary"
 	"fmt"
 	"strings"
 
@@ -12,8 +13,6 @@ var (
 	bdb                 *bbolt.DB
 	discordBucketName   = []byte("discord_to_steamid")
 	lowercaseBucketName = []byte("lowercase_to_normalcase")
-	lowercasePath       = makePath("discord", "users", "lowercase")
-	normalPath          = makePath("discord", "users", "normal")
 )
 
 type usersBucket struct {
@@ -86,4 +85,14 @@ func initBoltDB() {
 
 func closeBoltDB() error {
 	return bdb.Close()
+}
+
+func uint32FromBytes(val []byte) uint32 {
+	return binary.LittleEndian.Uint32(val)
+}
+
+func uint32ToBytes(val uint32) []byte {
+	var buf [4]byte
+	binary.LittleEndian.PutUint32(buf[:], val)
+	return buf[:]
 }

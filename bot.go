@@ -174,7 +174,6 @@ func bot() (err error) {
 	select {
 	case <-sc:
 	case <-restartChan:
-		ldb.Close()
 		cmd := exec.Command(os.Args[0], os.Args[1:]...)
 		log.Println("Restarting myself...")
 		err := cmd.Start()
