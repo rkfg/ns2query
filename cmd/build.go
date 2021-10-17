@@ -78,7 +78,7 @@ func pack(cfg buildConfig, wg *sync.WaitGroup) {
 func build(cfg buildConfig, versionFlags string, wg *sync.WaitGroup) {
 	defer wg.Done()
 	cmd := exec.Command("go", "build", "-ldflags", "-s -w "+versionFlags+" -extldflags -static", "-o", cfg.binaryName())
-	cmd.Env = append(os.Environ(), "GOOS="+cfg.os, "GOARCH="+cfg.arch)
+	cmd.Env = append(os.Environ(), "GOOS="+cfg.os, "GOARCH="+cfg.arch, "CGO_ENABLED=0")
 	out, err := cmd.CombinedOutput()
 	if err != nil {
 		panic(fmt.Sprintf("Build failed! Config: %+v, error: %s, args: %s, output:\n%s", cfg, err, cmd.Args, out))
