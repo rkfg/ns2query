@@ -21,8 +21,14 @@ const (
 	discordPrefix   = "!"
 )
 
+type reaction struct {
+	messageID string
+	emojiID   string
+}
+
 type message struct {
 	*discordgo.MessageSend
+	*reaction
 	channelID string
 }
 
@@ -36,7 +42,7 @@ func parseFields(fields []string, author *discordgo.User, channelID string) (res
 	case "status":
 		for i := range config.Servers {
 			msg := serverStatus(config.Servers[i])
-			sendChan <- message{msg, channelID}
+			sendChan <- message{MessageSend: msg, channelID: channelID}
 		}
 	case "skill":
 		if len(fields) == 1 {
@@ -102,11 +108,24 @@ func parseFields(fields []string, author *discordgo.User, channelID string) (res
 	return
 }
 
+func processThreadMessage(s *discordgo.Session, m *discordgo.MessageCreate, t thread) {
+	if !t.Meme {
+		return
+	}
+	if len(m.Attachments) == 0 && !strings.Contains(m.Content, "https://") && !strings.Contains(m.Content, "http://") {
+		return
+	}
+	sendChan <- message{channelID: m.ChannelID, reaction: &reaction{messageID: m.ID, emojiID: "\U0001F44D"}}
+}
+
 func handleCommand(s *discordgo.Session, m *discordgo.MessageCreate) {
 	if s.State.User.ID == m.Author.ID {
 		return
 	}
 	msg := m.Message.Content
+	if t, ok := config.Threads[m.ChannelID]; ok {
+		processThreadMessage(s, m, t)
+	}
 	if !strings.HasPrefix(msg, cmdPrefix) {
 		return
 	}
@@ -118,19 +137,23 @@ func handleCommand(s *discordgo.Session, m *discordgo.MessageCreate) {
 			response = &discordgo.MessageSend{Content: "Error: " + err.Error()}
 		}
 		if response != nil {
-			sendChan <- message{response, m.ChannelID}
+			sendChan <- message{MessageSend: response, channelID: m.ChannelID}
 		}
 	}
 }
 
 func sendMsg(c chan message, s *discordgo.Session) {
-	for {
-		msg := <-c
+	for msg := range c {
 		channelID := msg.channelID
 		if channelID == "" {
 			channelID = config.ChannelID
 		}
-		s.ChannelMessageSendComplex(channelID, msg.MessageSend)
+		if msg.MessageSend != nil {
+			s.ChannelMessageSendComplex(channelID, msg.MessageSend)
+		}
+		if msg.reaction != nil {
+			s.MessageReactionAdd(channelID, msg.messageID, msg.emojiID)
+		}
 		time.Sleep(time.Second)
 	}
 }
@@ -167,6 +190,11 @@ func bot() (err error) {
 	for i := range config.Servers {
 		config.Servers[i].restartChan = restartChan
 		go query(config.Servers[i])
+	}
+	for tid := range config.Threads {
+		if err := dg.ThreadJoin(tid); err != nil {
+			log.Printf("Error joining thread %s: %s", tid, err)
+		}
 	}
 	fmt.Println("Bot is now running.  Press CTRL-C to exit.")
 	sc := make(chan os.Signal, 1)

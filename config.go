@@ -67,14 +67,18 @@ type seeding struct {
 	Cooldown   int
 }
 
+type thread struct {
+	Meme bool
+}
+
 var config struct {
 	Token         string
-	SteamKey      string        `json:"steam_key"`
-	ChannelID     string        `json:"channel_id"`
-	LevelDBPath   string        `json:"ldb_database_path"`
-	BoltDBPath    string        `json:"bdb_database_path"`
-	QueryInterval time.Duration `json:"query_interval"`
-	FailureLimit  int           `json:"failure_limit"`
+	SteamKey      string            `json:"steam_key"`
+	ChannelID     string            `json:"channel_id"`
+	Threads       map[string]thread `json:"threads"`
+	BoltDBPath    string            `json:"bdb_database_path"`
+	QueryInterval time.Duration     `json:"query_interval"`
+	FailureLimit  int               `json:"failure_limit"`
 	Servers       []*ns2server
 	Seeding       seeding
 }

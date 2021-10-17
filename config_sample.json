@@ -5,6 +5,11 @@
     "bdb_database_path": "/path/to/botdb/",
     "query_interval": 60,
     "failure_limit": 10,
+    "threads": {
+        "899251801575026708": {
+            "meme": true
+        }
+    },
     "servers": [
         {
             "name": "Server 1",
