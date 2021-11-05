@@ -17,7 +17,12 @@ the interval (in seconds) between querying the same server. All servers are quer
 
 Then setup the servers you want to watch. `name` can be anything, the bot will use it for announcing, address should be in the `ip:port`
 form (where port is `the game port + 1`, i.e. if you see 27015 in the Steam server browser use 27016 here). `player_slots` is the number of
-slots for players and `spec_slots` is spectator slots. The bot uses those to post "last minute" notifications.
+slots for players and `spec_slots` is spectator slots. The bot uses those to post "last minute" notifications. `status_template` is an
+optional parameter that defines the bot's status line. It's used to quickly see the server status without asking the bot directly.
+The status is displayed on Discord as "Playing ...", you can specify the format in this parameter using Go's template syntax. See
+`config_sample.json` for a full example with all available variables. tl;dr variables are used as `{{ .VarName }}`, all other characters
+are printed as is. The variables are: `ServerName`, `Players`, `PlayerSlots`, `SpecSlots`, `FreeSlots`, `TotalSlots`, `Map`, `Skill`.
+Hopefully, they're self-describing.
 
 The `seeding` section defines the player number boundaries. Inside that section there are two most important parameters, `seeding` (the bot
 will announce that the server is getting seeded when at least this many players have connected) and `almost_full` (it will say that the

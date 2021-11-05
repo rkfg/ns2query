@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bytes"
 	"crypto/tls"
 	"fmt"
 	"log"
@@ -10,6 +11,7 @@ import (
 	"os/signal"
 	"strings"
 	"syscall"
+	"text/template"
 	"time"
 
 	"github.com/bwmarrin/discordgo"
@@ -30,6 +32,17 @@ type message struct {
 	*discordgo.MessageSend
 	*reaction
 	channelID string
+}
+
+type currentServerStatus struct {
+	ServerName  string
+	Players     int
+	TotalSlots  int
+	PlayerSlots int
+	SpecSlots   int
+	FreeSlots   int
+	Map         string
+	Skill       int
 }
 
 var (
@@ -142,6 +155,49 @@ func handleCommand(s *discordgo.Session, m *discordgo.MessageCreate) {
 	}
 }
 
+func statusUpdate(restartChan chan struct{}, s *discordgo.Session) {
+	for {
+		status := &bytes.Buffer{}
+		for _, s := range config.Servers {
+			if s.statusTemplate != nil {
+				if status.Len() > 0 {
+					status.WriteString(" | ")
+				}
+				cs := currentServerStatus{
+					ServerName:  s.Name,
+					Players:     len(s.players),
+					PlayerSlots: s.PlayerSlots,
+					SpecSlots:   s.SpecSlots,
+					FreeSlots:   s.SpecSlots + s.PlayerSlots - len(s.players),
+					TotalSlots:  s.SpecSlots + s.PlayerSlots,
+					Map:         s.currentMap,
+					Skill:       s.avgSkill,
+				}
+				if err := s.statusTemplate.Execute(status, cs); err != nil {
+					log.Printf("Error executing template for server %s: %s", s.Name, err)
+				}
+			}
+		}
+		statusStr := "Natural Selection 2"
+		if status.Len() > 0 {
+			statusStr = status.String()
+		}
+		s.UpdateStatusComplex(discordgo.UpdateStatusData{
+			Status: "online",
+			Activities: []*discordgo.Activity{{
+				Type: discordgo.ActivityTypeGame,
+				Name: statusStr,
+			}},
+		})
+		select {
+		case <-time.After(config.QueryInterval * time.Second):
+		case <-restartChan:
+			log.Print("Restart request received, stopping status updater")
+			return
+		}
+	}
+}
+
 func sendMsg(c chan message, s *discordgo.Session) {
 	for msg := range c {
 		channelID := msg.channelID
@@ -186,9 +242,17 @@ func bot() (err error) {
 	defer dg.Close()
 	dg.AddHandler(handleCommand)
 	go sendMsg(sendChan, dg)
-	restartChan := make(chan bool)
+	restartChan := make(chan struct{})
 	for i := range config.Servers {
 		config.Servers[i].restartChan = restartChan
+		if config.Servers[i].StatusTemplate != "" {
+			t, err := template.New(config.Servers[i].Address + "/template").Parse(config.Servers[i].StatusTemplate)
+			if err != nil {
+				log.Printf("Error in status template '%s': %s", config.Servers[i].StatusTemplate, err)
+			} else {
+				config.Servers[i].statusTemplate = t
+			}
+		}
 		go query(config.Servers[i])
 	}
 	for tid := range config.Threads {
@@ -196,6 +260,7 @@ func bot() (err error) {
 			log.Printf("Error joining thread %s: %s", tid, err)
 		}
 	}
+	go statusUpdate(restartChan, dg)
 	fmt.Println("Bot is now running.  Press CTRL-C to exit.")
 	sc := make(chan os.Signal, 1)
 	signal.Notify(sc, syscall.SIGINT, syscall.SIGTERM, os.Interrupt)

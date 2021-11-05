@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"text/template"
 	"time"
 )
 
@@ -20,8 +21,10 @@ const (
 type ns2server struct {
 	Name               string
 	Address            string
-	SpecSlots          int `json:"spec_slots"`
-	PlayerSlots        int `json:"player_slots"`
+	SpecSlots          int    `json:"spec_slots"`
+	PlayerSlots        int    `json:"player_slots"`
+	StatusTemplate     string `json:"status_template"`
+	statusTemplate     *template.Template
 	players            []string
 	serverState        state
 	maxStateToMessage  state
@@ -29,7 +32,7 @@ type ns2server struct {
 	lastStatePromotion time.Time
 	currentMap         string
 	avgSkill           int
-	restartChan        chan bool
+	restartChan        chan struct{}
 	failures           int
 	downSince          *time.Time
 }

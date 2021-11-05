@@ -15,7 +15,8 @@
             "name": "Server 1",
             "address": "192.168.0.1:27016",
             "player_slots": 20,
-            "spec_slots": 6
+            "spec_slots": 6,
+            "status_template": "{{ .ServerName }} Pl:{{ .Players }}/{{ .PlayerSlots }}+{{ .SpecSlots }}={{ .TotalSlots }};{{ .Map }}@{{ .Skill }}"
         },
         {
             "name": "Server 2",
