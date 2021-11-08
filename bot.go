@@ -173,8 +173,10 @@ func statusUpdate(restartChan chan struct{}, s *discordgo.Session) {
 					Map:         s.currentMap,
 					Skill:       s.avgSkill,
 				}
-				if err := s.statusTemplate.Execute(status, cs); err != nil {
-					log.Printf("Error executing template for server %s: %s", s.Name, err)
+				if cs.Players > 0 {
+					if err := s.statusTemplate.Execute(status, cs); err != nil {
+						log.Printf("Error executing template for server %s: %s", s.Name, err)
+					}
 				}
 			}
 		}
