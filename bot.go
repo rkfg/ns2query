@@ -108,7 +108,7 @@ func parseFields(fields []string, author *discordgo.User, channelID string) (res
 				},
 				{
 					Name: "-bind [Steam ID]",
-					Value: "bind your Discord accound to the specified player so you can use `-skill`" +
+					Value: "bind your Discord accound to the specified player so you can use `-skill` " +
 						"without argument. Use `-bind` without argument to unbind yourself.",
 				},
 				{
