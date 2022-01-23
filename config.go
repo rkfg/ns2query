@@ -30,6 +30,7 @@ type ns2server struct {
 	RegularTimeout     time.Duration `json:"regular_timeout"`
 	regularTimeouts    map[uint32]*time.Time
 	regularNames       []string
+	newRegularNames    []string
 	newRegulars        bool
 	statusTemplate     *template.Template
 	players            []string

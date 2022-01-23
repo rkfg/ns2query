@@ -71,6 +71,12 @@ func (srv *ns2server) serverStatus() *discordgo.MessageSend {
 	} else if playersCount >= srv.PlayerSlots {
 		msg.Embed.Color = 0xff3300
 	}
+	if len(srv.regularNames) > 0 {
+		msg.Embed.Fields = append(msg.Embed.Fields, &discordgo.MessageEmbedField{
+			Name:  "Regulars",
+			Value: strings.Join(srv.regularNames, ", "),
+		})
+	}
 	return &msg
 }
 
@@ -195,13 +201,15 @@ func (srv *ns2server) serverLoop() {
 func (srv *ns2server) checkRegulars(ids []uint32) {
 	bdb.View(func(t *bbolt.Tx) error {
 		steamBucket := newSteamToDiscordBucket(t)
+		srv.regularNames = srv.regularNames[:0]
 		for _, id := range ids {
 			name, err := steamBucket.get(id)
 			if err == nil {
+				srv.regularNames = append(srv.regularNames, name)
 				timeout := srv.regularTimeouts[id]
 				if timeout == nil {
 					log.Printf("Adding regular %s", name)
-					srv.regularNames = append(srv.regularNames, name)
+					srv.newRegularNames = append(srv.newRegularNames, name)
 				}
 				newTimeout := time.Now().Add(srv.RegularTimeout)
 				srv.regularTimeouts[id] = &newTimeout
@@ -221,11 +229,11 @@ func (srv *ns2server) announceRegulars() {
 		Embed: &discordgo.MessageEmbed{
 			Title:       fmt.Sprintf("%s [%s]", srv.Name, srv.currentMap),
 			Footer:      &discordgo.MessageEmbedFooter{Text: "Recently joined"},
-			Description: strings.Join(srv.regularNames, ", "),
+			Description: strings.Join(srv.newRegularNames, ", "),
 			Color:       0x00aaff,
 		},
 	}}
-	srv.regularNames = srv.regularNames[:0]
+	srv.newRegularNames = srv.newRegularNames[:0]
 	srv.newRegulars = false
 }
 
@@ -245,7 +253,7 @@ func (srv *ns2server) idsLoop() {
 				srv.checkRegulars(ids)
 			}
 		}
-		if len(srv.regularNames) == 0 {
+		if len(srv.newRegularNames) == 0 {
 			// make sure this never fires too early if there are no queued regulars
 			announceChan = time.After(srv.QueryIDInterval * 60)
 		} else {
