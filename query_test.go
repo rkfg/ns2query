@@ -18,7 +18,7 @@ func TestMain(t *testing.M) {
 func notif(t *testing.T, srv *ns2server, expected string) {
 	q := make(chan bool)
 	go func() {
-		maybeNotify(srv)
+		srv.maybeNotify()
 		close(q)
 	}()
 	select {

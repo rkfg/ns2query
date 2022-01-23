@@ -21,9 +21,16 @@ const (
 type ns2server struct {
 	Name               string
 	Address            string
-	SpecSlots          int    `json:"spec_slots"`
-	PlayerSlots        int    `json:"player_slots"`
-	StatusTemplate     string `json:"status_template"`
+	SpecSlots          int           `json:"spec_slots"`
+	PlayerSlots        int           `json:"player_slots"`
+	StatusTemplate     string        `json:"status_template"`
+	IDURL              string        `json:"id_url"`
+	QueryIDInterval    time.Duration `json:"query_id_interval"`
+	AnnounceDelay      time.Duration `json:"announce_delay"`
+	RegularTimeout     time.Duration `json:"regular_timeout"`
+	regularTimeouts    map[uint32]*time.Time
+	regularNames       []string
+	newRegulars        bool
 	statusTemplate     *template.Template
 	players            []string
 	serverState        state
@@ -99,6 +106,8 @@ func loadConfigFilename(filename string) error {
 	}
 	if config.QueryInterval < 1 {
 		return fmt.Errorf("invalid query interval in config.json: %d", config.QueryInterval)
+	} else {
+		config.QueryInterval *= time.Second
 	}
 	if config.ChannelID == "" {
 		return fmt.Errorf("specify channel_id in config.json")

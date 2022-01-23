@@ -24,6 +24,17 @@ The status is displayed on Discord as "Playing ...", you can specify the format 
 are printed as is. The variables are: `ServerName`, `Players`, `PlayerSlots`, `SpecSlots`, `FreeSlots`, `TotalSlots`, `Map`, `Skill`.
 Hopefully, they're self-describing.
 
+`id_url` is an optional per server parameter that lets you specify an URL that serves a JSON with player Steam IDs that are currently on
+this server. You can user [this mod](https://steamcommunity.com/sharedfiles/filedetails/?id=2714142788) to grab them and then provide
+web access to the file using any avaliable web server. The bot will announce connecting players that are in the database using their
+Discord tags. The announce will be delayed by `announce_delay` seconds, if more known players join during that period they all will be
+announced altogether. It's a simple rate limiter to prevent spam. `regular_timeout` is a period of time in seconds after which a known
+player (aka regular) that left the server is forgotten by the bot and can be announced again. This is to prevent multiple announces in
+case the player leaves and rejoins in a short time (because of a crash or otherwise).
+
+If you already have a database that's been populated before these changes, run the bot with `--reindex` to fill the Steam ID => Discord
+index. All new players registering themselves with `-bind` will be indexed automatically.
+
 The `seeding` section defines the player number boundaries. Inside that section there are two most important parameters, `seeding` (the bot
 will announce that the server is getting seeded when at least this many players have connected) and `almost_full` (it will say that the
 server is getting filled but there are still slots if you want to play). The `cooldown` parameter is used when the number of players

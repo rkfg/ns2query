@@ -9,9 +9,8 @@ import (
 func main() {
 	usage := `Usage:
 	ns2query [-c config]
-	ns2query -u
+	ns2query --reindex
 	ns2query -h
-	ns2query --convert
 
 Options:
 	-h --help    This help
@@ -30,6 +29,9 @@ Options:
 		}
 		initBoltDB()
 		defer closeBoltDB()
+	}
+	if b, _ := opts.Bool("--reindex"); b {
+		reindex()
 	}
 	err = bot()
 	if err != nil {

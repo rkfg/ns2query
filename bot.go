@@ -54,7 +54,7 @@ func parseFields(fields []string, author *discordgo.User, channelID string) (res
 	switch strings.ToLower(fields[0]) {
 	case "status":
 		for i := range config.Servers {
-			msg := serverStatus(config.Servers[i])
+			msg := config.Servers[i].serverStatus()
 			sendChan <- message{MessageSend: msg, channelID: channelID}
 		}
 	case "skill":
@@ -192,7 +192,7 @@ func statusUpdate(restartChan chan struct{}, s *discordgo.Session) {
 			}},
 		})
 		select {
-		case <-time.After(config.QueryInterval * time.Second):
+		case <-time.After(config.QueryInterval):
 		case <-restartChan:
 			log.Print("Restart request received, stopping status updater")
 			return
@@ -255,7 +255,23 @@ func bot() (err error) {
 				config.Servers[i].statusTemplate = t
 			}
 		}
-		go query(config.Servers[i])
+		if config.Servers[i].QueryIDInterval < 1 {
+			config.Servers[i].QueryIDInterval = config.QueryInterval
+		} else {
+			config.Servers[i].QueryIDInterval *= time.Second
+		}
+		if config.Servers[i].AnnounceDelay < 1 {
+			config.Servers[i].AnnounceDelay = time.Minute * 5
+		} else {
+			config.Servers[i].AnnounceDelay *= time.Second
+		}
+		if config.Servers[i].RegularTimeout < 1 {
+			config.Servers[i].RegularTimeout = time.Hour
+		} else {
+			config.Servers[i].RegularTimeout *= time.Second
+		}
+		config.Servers[i].regularTimeouts = make(map[uint32]*time.Time)
+		config.Servers[i].query()
 	}
 	for tid := range config.Threads {
 		if err := dg.ThreadJoin(tid); err != nil {

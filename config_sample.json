@@ -16,6 +16,10 @@
             "address": "192.168.0.1:27016",
             "player_slots": 20,
             "spec_slots": 6,
+            "id_url": "https://example.com/steamids.json",
+            "query_id_interval": 60,
+            "announce_delay": 300,
+            "regular_timeout": 3600,
             "status_template": "{{ .ServerName }} Pl:{{ .Players }}/{{ .PlayerSlots }}+{{ .SpecSlots }}={{ .TotalSlots }};{{ .Map }}@{{ .Skill }}"
         },
         {

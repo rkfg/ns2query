@@ -24,6 +24,11 @@ func putBind(playerID uint32, discordUser *discordgo.User) (err error) {
 		if err != nil {
 			return
 		}
+		steamBucket := newSteamToDiscordBucket(t)
+		err = steamBucket.put(playerID, name)
+		if err != nil {
+			return
+		}
 		return newLowercaseBucket(t).put(name)
 	})
 }
@@ -41,11 +46,21 @@ func getBind(username string) (playerID uint32, err error) {
 
 func deleteBind(user *discordgo.User) (err error) {
 	return bdb.Update(func(t *bbolt.Tx) (err error) {
-		err = newUsersBucket(t).del(user.String())
+		userBucket := newUsersBucket(t)
+		steamBucket := newSteamToDiscordBucket(t)
+		userKey := user.String()
+		steamId, _ := userBucket.get(userKey)
+		err = userBucket.del(userKey)
 		if err != nil {
 			return
 		}
-		err = newLowercaseBucket(t).del(strings.ToLower(user.String()))
+		if steamId > 0 {
+			err = steamBucket.del(steamId)
+			if err != nil {
+				return
+			}
+		}
+		err = newLowercaseBucket(t).del(strings.ToLower(userKey))
 		return
 	})
 }

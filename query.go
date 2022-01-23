@@ -1,14 +1,18 @@
 package main
 
 import (
+	"encoding/json"
 	"fmt"
 	"log"
 	"net"
+	"net/http"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/bwmarrin/discordgo"
 	"github.com/rumblefrog/go-a2s"
+	"go.etcd.io/bbolt"
 )
 
 const (
@@ -24,7 +28,7 @@ func (e queryError) Error() string {
 	return fmt.Sprintf(e.description, e.err)
 }
 
-func serverStatus(srv *ns2server) *discordgo.MessageSend {
+func (srv *ns2server) serverStatus() *discordgo.MessageSend {
 	specSlots := srv.SpecSlots
 	playerSlots := srv.PlayerSlots - len(srv.players)
 	freeSlots := playerSlots + srv.SpecSlots
@@ -70,7 +74,7 @@ func serverStatus(srv *ns2server) *discordgo.MessageSend {
 	return &msg
 }
 
-func maybeNotify(srv *ns2server) {
+func (srv *ns2server) maybeNotify() {
 	playersCount := len(srv.players)
 	newState := empty
 	if playersCount < config.Seeding.Seeding {
@@ -89,7 +93,7 @@ func maybeNotify(srv *ns2server) {
 		srv.serverState = newState
 		if srv.lastStateAnnounced != newState {
 			srv.lastStateAnnounced = newState
-			msg := serverStatus(srv)
+			msg := srv.serverStatus()
 			switch newState {
 			case seedingstarted:
 				msg.Embed.Description = "Seeding started! Players on the server: " + srv.playersString()
@@ -115,7 +119,7 @@ func maybeNotify(srv *ns2server) {
 	}
 }
 
-func queryServer(client *a2s.Client, srv *ns2server) error {
+func (srv *ns2server) queryServer(client *a2s.Client) error {
 	info, err := client.QueryInfo()
 	if err != nil {
 		return queryError{"server info query: %s", err}
@@ -142,11 +146,11 @@ func queryServer(client *a2s.Client, srv *ns2server) error {
 	for _, p := range playersInfo.Players {
 		srv.players = append(srv.players, p.Name)
 	}
-	maybeNotify(srv)
+	srv.maybeNotify()
 	return nil
 }
 
-func query(srv *ns2server) {
+func (srv *ns2server) serverLoop() {
 	client, err := a2s.NewClient(srv.Address)
 	if err != nil {
 		log.Println("error creating client:", err)
@@ -154,12 +158,8 @@ func query(srv *ns2server) {
 	}
 	defer client.Close()
 	log.Printf("Client created for %s [%s]", srv.Name, srv.Address)
-	srv.currentMap = "<unknown>"
-	srv.avgSkill = 0
-	srv.maxStateToMessage = full
-	srv.lastStateAnnounced = empty
 	for {
-		err = queryServer(client, srv)
+		err := srv.queryServer(client)
 		if err != nil {
 			log.Printf("Error: %s", err)
 			srv.failures++
@@ -184,10 +184,94 @@ func query(srv *ns2server) {
 			}
 		}
 		select {
-		case <-time.After(config.QueryInterval * time.Second):
+		case <-time.After(config.QueryInterval):
 		case <-srv.restartChan:
 			log.Printf("Restart request received, stopping server polling: %s [%s]", srv.Name, srv.Address)
 			return
 		}
+	}
+}
+
+func (srv *ns2server) checkRegulars(ids []uint32) {
+	bdb.View(func(t *bbolt.Tx) error {
+		steamBucket := newSteamToDiscordBucket(t)
+		for _, id := range ids {
+			name, err := steamBucket.get(id)
+			if err == nil {
+				timeout := srv.regularTimeouts[id]
+				if timeout == nil {
+					log.Printf("Adding regular %s", name)
+					srv.regularNames = append(srv.regularNames, name)
+				}
+				newTimeout := time.Now().Add(srv.RegularTimeout)
+				srv.regularTimeouts[id] = &newTimeout
+			}
+		}
+		for k, v := range srv.regularTimeouts {
+			if v != nil && time.Now().After(*v) {
+				delete(srv.regularTimeouts, k)
+			}
+		}
+		return nil
+	})
+}
+
+func (srv *ns2server) announceRegulars() {
+	sendChan <- message{MessageSend: &discordgo.MessageSend{
+		Embed: &discordgo.MessageEmbed{
+			Title:       fmt.Sprintf("%s [%s]", srv.Name, srv.currentMap),
+			Footer:      &discordgo.MessageEmbedFooter{Text: "Recently joined"},
+			Description: strings.Join(srv.regularNames, ", "),
+			Color:       0x00aaff,
+		},
+	}}
+	srv.regularNames = srv.regularNames[:0]
+	srv.newRegulars = false
+}
+
+func (srv *ns2server) idsLoop() {
+	httpClient := http.Client{Timeout: time.Second * 3}
+	var announceChan <-chan time.Time
+	for {
+		resp, err := httpClient.Get(srv.IDURL)
+		ids := []uint32{}
+		if err != nil {
+			log.Printf("Error querying %s: %s", srv.IDURL, err)
+		} else {
+			err = json.NewDecoder(resp.Body).Decode(&ids)
+			if err != nil {
+				log.Printf("Error decoding ids: %s", err)
+			} else {
+				srv.checkRegulars(ids)
+			}
+		}
+		if len(srv.regularNames) == 0 {
+			// make sure this never fires too early if there are no queued regulars
+			announceChan = time.After(srv.QueryIDInterval * 60)
+		} else {
+			if !srv.newRegulars {
+				announceChan = time.After(srv.AnnounceDelay)
+				srv.newRegulars = true
+			}
+		}
+		select {
+		case <-time.After(srv.QueryIDInterval):
+		case <-announceChan:
+			srv.announceRegulars()
+		case <-srv.restartChan:
+			log.Printf("Restart request received, stopping steam ids polling: %s [%s]", srv.Name, srv.Address)
+			return
+		}
+	}
+}
+
+func (srv *ns2server) query() {
+	srv.currentMap = "<unknown>"
+	srv.avgSkill = 0
+	srv.maxStateToMessage = full
+	srv.lastStateAnnounced = empty
+	go srv.serverLoop()
+	if srv.IDURL != "" {
+		go srv.idsLoop()
 	}
 }
