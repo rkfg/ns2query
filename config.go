@@ -18,6 +18,11 @@ const (
 	full
 )
 
+type regular struct {
+	id   uint32
+	name string
+}
+
 type ns2server struct {
 	Name               string
 	Address            string
@@ -30,8 +35,8 @@ type ns2server struct {
 	RegularTimeout     time.Duration `json:"regular_timeout"`
 	regularTimeouts    map[uint32]*time.Time
 	regularNames       []string
-	newRegularNames    []string
-	newRegulars        bool
+	newRegulars        map[uint32]regular
+	announceScheduled  bool
 	statusTemplate     *template.Template
 	players            []string
 	serverState        state

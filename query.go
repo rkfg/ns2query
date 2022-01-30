@@ -199,6 +199,11 @@ func (srv *ns2server) serverLoop() {
 }
 
 func (srv *ns2server) checkRegulars(ids []uint32) {
+	for k, v := range srv.regularTimeouts {
+		if v != nil && time.Now().After(*v) {
+			delete(srv.regularTimeouts, k)
+		}
+	}
 	bdb.View(func(t *bbolt.Tx) error {
 		steamBucket := newSteamToDiscordBucket(t)
 		srv.regularNames = srv.regularNames[:0]
@@ -206,60 +211,81 @@ func (srv *ns2server) checkRegulars(ids []uint32) {
 			name, err := steamBucket.get(id)
 			if err == nil {
 				srv.regularNames = append(srv.regularNames, name)
-				timeout := srv.regularTimeouts[id]
-				if timeout == nil {
-					log.Printf("Adding regular %s", name)
-					srv.newRegularNames = append(srv.newRegularNames, name)
+				if _, exist := srv.newRegulars[id]; !exist && srv.regularTimeouts[id] == nil {
+					log.Printf("Adding regular to announce %s", name)
+					srv.newRegulars[id] = regular{id: id, name: name}
 				}
-				newTimeout := time.Now().Add(srv.RegularTimeout)
-				srv.regularTimeouts[id] = &newTimeout
-			}
-		}
-		for k, v := range srv.regularTimeouts {
-			if v != nil && time.Now().After(*v) {
-				delete(srv.regularTimeouts, k)
 			}
 		}
 		return nil
 	})
 }
 
+func (srv *ns2server) getPlayerIDs() (result []uint32, err error) {
+	httpClient := http.Client{Timeout: time.Second * 3}
+	resp, err := httpClient.Get(srv.IDURL)
+	if err != nil {
+		return nil, fmt.Errorf("Error querying %s: %w", srv.IDURL, err)
+	} else {
+		err = json.NewDecoder(resp.Body).Decode(&result)
+	}
+	return
+}
+
 func (srv *ns2server) announceRegulars() {
-	sendChan <- message{MessageSend: &discordgo.MessageSend{
-		Embed: &discordgo.MessageEmbed{
-			Title:       fmt.Sprintf("%s [%s]", srv.Name, srv.currentMap),
-			Footer:      &discordgo.MessageEmbedFooter{Text: "Recently joined"},
-			Description: strings.Join(srv.newRegularNames, ", "),
-			Color:       0x00aaff,
-		},
-	}}
-	srv.newRegularNames = srv.newRegularNames[:0]
-	srv.newRegulars = false
+	defer func() {
+		srv.newRegulars = map[uint32]regular{}
+		srv.announceScheduled = false
+	}()
+	ids, err := srv.getPlayerIDs()
+	if err != nil {
+		log.Printf("Error getting IDs: %s", err)
+		return
+	}
+	msg := ""
+	idmap := map[uint32]struct{}{} // players currently on the server
+	for _, id := range ids {
+		idmap[id] = struct{}{}
+	}
+	for id, r := range srv.newRegulars {
+		if _, ok := idmap[id]; ok { // only announce those who are playing
+			if msg != "" {
+				msg += ", "
+			}
+			msg += r.name
+			newTimeout := time.Now().Add(srv.RegularTimeout)
+			srv.regularTimeouts[id] = &newTimeout
+		}
+	}
+	if msg != "" {
+		sendChan <- message{MessageSend: &discordgo.MessageSend{
+			Embed: &discordgo.MessageEmbed{
+				Title:       fmt.Sprintf("%s [%s]", srv.Name, srv.currentMap),
+				Footer:      &discordgo.MessageEmbedFooter{Text: "Recently joined"},
+				Description: msg,
+				Color:       0x00aaff,
+			},
+		}}
+	}
 }
 
 func (srv *ns2server) idsLoop() {
-	httpClient := http.Client{Timeout: time.Second * 3}
 	var announceChan <-chan time.Time
+	srv.newRegulars = map[uint32]regular{}
 	for {
-		resp, err := httpClient.Get(srv.IDURL)
-		ids := []uint32{}
+		ids, err := srv.getPlayerIDs()
 		if err != nil {
-			log.Printf("Error querying %s: %s", srv.IDURL, err)
-		} else {
-			err = json.NewDecoder(resp.Body).Decode(&ids)
-			if err != nil {
-				log.Printf("Error decoding ids: %s", err)
-			} else {
-				srv.checkRegulars(ids)
-			}
+			log.Printf("Error decoding ids: %s", err)
+			continue
 		}
-		if len(srv.newRegularNames) == 0 {
+		srv.checkRegulars(ids)
+		if len(srv.newRegulars) == 0 {
 			// make sure this never fires too early if there are no queued regulars
-			announceChan = time.After(srv.QueryIDInterval * 60)
+			announceChan = time.After(srv.QueryIDInterval * 5)
 		} else {
-			if !srv.newRegulars {
+			if !srv.announceScheduled {
 				announceChan = time.After(srv.AnnounceDelay)
-				srv.newRegulars = true
+				srv.announceScheduled = true
 			}
 		}
 		select {
