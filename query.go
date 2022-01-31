@@ -211,9 +211,14 @@ func (srv *ns2server) checkRegulars(ids []uint32) {
 			name, err := steamBucket.get(id)
 			if err == nil {
 				srv.regularNames = append(srv.regularNames, name)
-				if _, exist := srv.newRegulars[id]; !exist && srv.regularTimeouts[id] == nil {
-					log.Printf("Adding regular to announce %s", name)
-					srv.newRegulars[id] = regular{id: id, name: name}
+				if _, exists := srv.newRegulars[id]; !exists {
+					if srv.regularTimeouts[id] == nil {
+						log.Printf("Adding regular to announce %s", name)
+						srv.newRegulars[id] = regular{id: id, name: name}
+					} else {
+						newTimeout := time.Now().Add(srv.RegularTimeout)
+						srv.regularTimeouts[id] = &newTimeout
+					}
 				}
 			}
 		}
