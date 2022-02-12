@@ -35,6 +35,11 @@ case the player leaves and rejoins in a short time (because of a crash or otherw
 If you already have a database that's been populated before these changes, run the bot with `--reindex` to fill the Steam ID => Discord
 index. All new players registering themselves with `-bind` will be indexed automatically.
 
+The `users` section lets you specify the Discord IDs that have special privileges. Currently it's only used for the `-bindu` command
+that's not shown in the help message because it's special. To use it the user must be defined in the `users` section as
+`"123123123": "admin"`, only `admin` role is defined by now and it only allows access to `-bindu`. This command allows to bind a steam ID
+to any Discord user and is meant to be used by admins to populate the database. Call it as `-bidnu DiscordName#3333 https://steamcommunity.com/id/steamprofilename`. To unbind any user call `-bindu DiscordName#3333`.
+
 The `seeding` section defines the player number boundaries. Inside that section there are two most important parameters, `seeding` (the bot
 will announce that the server is getting seeded when at least this many players have connected) and `almost_full` (it will say that the
 server is getting filled but there are still slots if you want to play). The `cooldown` parameter is used when the number of players

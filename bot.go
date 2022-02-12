@@ -9,6 +9,7 @@ import (
 	"os"
 	"os/exec"
 	"os/signal"
+	"regexp"
 	"strings"
 	"syscall"
 	"text/template"
@@ -46,7 +47,8 @@ type currentServerStatus struct {
 }
 
 var (
-	sendChan = make(chan message, 10)
+	sendChan         = make(chan message, 10)
+	discordNameRegex = regexp.MustCompile(`^.*#\d{4}$`)
 )
 
 func parseFields(fields []string, author *discordgo.User, channelID string) (response *discordgo.MessageSend, err error) {
@@ -79,18 +81,45 @@ func parseFields(fields []string, author *discordgo.User, channelID string) (res
 			return nil, fmt.Errorf("invalid argument for `-bind`")
 		}
 		if len(fields) == 2 {
-			playerID, err = bind(fields[1], author)
+			playerID, err = bind(fields[1], author.String())
 			if err != nil {
 				return
 			}
 			return &discordgo.MessageSend{Content: fmt.Sprintf("User %s has been bound to player ID %d. You can use `-skill` without arguments now.",
 				author.String(), playerID)}, nil
 		}
-		err = deleteBind(author)
+		err = deleteBind(author.String())
 		if err != nil {
 			return
 		}
 		return &discordgo.MessageSend{Content: fmt.Sprintf("User %s has been unbound.", author.String())}, nil
+	case "bindu":
+		if role, ok := config.Users[author.ID]; !ok || role != "admin" {
+			return nil, fmt.Errorf("insufficient privilege")
+		}
+		if len(fields) > 3 {
+			return nil, fmt.Errorf("invalid arguments for `-bindu`")
+		}
+		if len(fields) < 2 {
+			return nil, fmt.Errorf("not enough arguments for `-bindu`")
+		}
+		username := fields[1]
+		if !discordNameRegex.MatchString(username) {
+			return nil, fmt.Errorf("invalid Discord name, must be in the form of `name#3333`")
+		}
+		if len(fields) == 3 {
+			playerID, err = bind(fields[2], username)
+			if err != nil {
+				return
+			}
+			return &discordgo.MessageSend{Content: fmt.Sprintf("User %s has been bound to player ID %d.",
+				username, playerID)}, nil
+		}
+		err = deleteBind(username)
+		if err != nil {
+			return
+		}
+		return &discordgo.MessageSend{Content: fmt.Sprintf("User %s has been unbound.", username)}, nil
 	case "version":
 		return versionEmbed(), nil
 	case "help":

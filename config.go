@@ -87,6 +87,8 @@ type thread struct {
 	Meme bool
 }
 
+type users map[string]string
+
 var config struct {
 	Token         string
 	SteamKey      string            `json:"steam_key"`
@@ -97,6 +99,7 @@ var config struct {
 	FailureLimit  int               `json:"failure_limit"`
 	Servers       []*ns2server
 	Seeding       seeding
+	Users         users `json:"users"`
 }
 
 func loadConfig(path string) error {

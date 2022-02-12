@@ -4,22 +4,20 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/bwmarrin/discordgo"
 	"go.etcd.io/bbolt"
 )
 
-func bind(player string, user *discordgo.User) (id uint32, err error) {
+func bind(player string, name string) (id uint32, err error) {
 	id, err = playerIDFromSteamID(player)
 	if err != nil {
 		return
 	}
-	err = putBind(id, user)
+	err = putBind(id, name)
 	return
 }
 
-func putBind(playerID uint32, discordUser *discordgo.User) (err error) {
+func putBind(playerID uint32, name string) (err error) {
 	return bdb.Update(func(t *bbolt.Tx) (err error) {
-		name := discordUser.String()
 		err = newUsersBucket(t).put(name, playerID)
 		if err != nil {
 			return
@@ -44,13 +42,12 @@ func getBind(username string) (playerID uint32, err error) {
 	return
 }
 
-func deleteBind(user *discordgo.User) (err error) {
+func deleteBind(name string) (err error) {
 	return bdb.Update(func(t *bbolt.Tx) (err error) {
 		userBucket := newUsersBucket(t)
 		steamBucket := newSteamToDiscordBucket(t)
-		userKey := user.String()
-		steamId, _ := userBucket.get(userKey)
-		err = userBucket.del(userKey)
+		steamId, _ := userBucket.get(name)
+		err = userBucket.del(name)
 		if err != nil {
 			return
 		}
@@ -60,7 +57,7 @@ func deleteBind(user *discordgo.User) (err error) {
 				return
 			}
 		}
-		err = newLowercaseBucket(t).del(strings.ToLower(userKey))
+		err = newLowercaseBucket(t).del(strings.ToLower(name))
 		return
 	})
 }

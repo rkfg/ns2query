@@ -29,6 +29,10 @@
             "spec_slots": 4
         }
     ],
+    "users": {
+        "123123123123123123": "admin",
+        "456456456456456456": "admin"
+    },
     "seeding": {
         "seeding": 4,
         "almost_full": 12,
