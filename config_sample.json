@@ -20,6 +20,7 @@
             "query_id_interval": 60,
             "announce_delay": 300,
             "regular_timeout": 3600,
+            "regular_channel_id": "123412342564546234",
             "status_template": "{{ .ServerName }} Pl:{{ .Players }}/{{ .PlayerSlots }}+{{ .SpecSlots }}={{ .TotalSlots }};{{ .Map }}@{{ .Skill }}"
         },
         {

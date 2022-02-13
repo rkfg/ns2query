@@ -30,7 +30,8 @@ web access to the file using any avaliable web server. The bot will announce con
 Discord tags. The announce will be delayed by `announce_delay` seconds, if more known players join during that period they all will be
 announced altogether. It's a simple rate limiter to prevent spam. `regular_timeout` is a period of time in seconds after which a known
 player (aka regular) that left the server is forgotten by the bot and can be announced again. This is to prevent multiple announces in
-case the player leaves and rejoins in a short time (because of a crash or otherwise).
+case the player leaves and rejoins in a short time (because of a crash or otherwise). If you want these announcements to go to a different
+channel, set `regular_channel_id`.
 
 If you already have a database that's been populated before these changes, run the bot with `--reindex` to fill the Steam ID => Discord
 index. All new players registering themselves with `-bind` will be indexed automatically.

@@ -33,6 +33,7 @@ type ns2server struct {
 	QueryIDInterval    time.Duration `json:"query_id_interval"`
 	AnnounceDelay      time.Duration `json:"announce_delay"`
 	RegularTimeout     time.Duration `json:"regular_timeout"`
+	RegularChannelID   string        `json:"regular_channel_id"`
 	regularTimeouts    map[uint32]*time.Time
 	regularNames       []string
 	newRegulars        map[uint32]regular

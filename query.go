@@ -263,6 +263,10 @@ func (srv *ns2server) announceRegulars() {
 		}
 	}
 	if msg != "" {
+		channelID := srv.RegularChannelID
+		if channelID == "" {
+			channelID = config.ChannelID
+		}
 		sendChan <- message{MessageSend: &discordgo.MessageSend{
 			Embed: &discordgo.MessageEmbed{
 				Title:       fmt.Sprintf("%s [%s]", srv.Name, srv.currentMap),
@@ -270,7 +274,7 @@ func (srv *ns2server) announceRegulars() {
 				Description: msg,
 				Color:       0x00aaff,
 			},
-		}}
+		}, channelID: channelID}
 	}
 }
 
