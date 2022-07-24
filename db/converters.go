@@ -1,7 +1,9 @@
 package db
 
 import (
+	"bytes"
 	"encoding/binary"
+	"encoding/gob"
 	"strings"
 )
 
@@ -38,4 +40,17 @@ type LowercaseStringConverter struct {
 
 func (u LowercaseStringConverter) convertTo(val string) []byte {
 	return []byte(strings.ToLower(val))
+}
+
+type StructConverter[S any] struct{}
+
+func (s StructConverter[S]) convertTo(val S) []byte {
+	result := bytes.Buffer{}
+	gob.NewEncoder(&result).Encode(val)
+	return result.Bytes()
+}
+
+func (s StructConverter[S]) convertFrom(val []byte) (result S) {
+	gob.NewDecoder(bytes.NewReader(val)).Decode(&result)
+	return
 }

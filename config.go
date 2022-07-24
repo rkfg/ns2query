@@ -24,8 +24,8 @@ type regular struct {
 }
 
 type ns2server struct {
-	Name               string
-	Address            string
+	Name               string        `json:"name"`
+	Address            string        `json:"address"`
 	SpecSlots          int           `json:"spec_slots"`
 	PlayerSlots        int           `json:"player_slots"`
 	StatusTemplate     string        `json:"status_template"`
@@ -79,28 +79,32 @@ func (s *ns2server) playersString() string {
 }
 
 type seeding struct {
-	Seeding    int
+	Seeding    int `json:"seeding"`
 	AlmostFull int `json:"almost_full"`
-	Cooldown   int
+	Cooldown   int `json:"cooldown"`
 }
 
 type thread struct {
-	Meme bool
+	Meme                    bool   `json:"meme"`
+	Competition             bool   `json:"competition"`
+	CompetitionDeadline     int    `json:"competition_deadline"`
+	CompetitionAnnouncement int    `json:"competition_announcement"`
+	AnnounceWinnerTo        string `json:"announce_winner_to"`
 }
 
 type users map[string]string
 
 var config struct {
-	Token         string
+	Token         string            `json:"token"`
 	SteamKey      string            `json:"steam_key"`
 	ChannelID     string            `json:"channel_id"`
 	Threads       map[string]thread `json:"threads"`
 	BoltDBPath    string            `json:"bdb_database_path"`
 	QueryInterval time.Duration     `json:"query_interval"`
 	FailureLimit  int               `json:"failure_limit"`
-	Servers       []*ns2server
-	Seeding       seeding
-	Users         users `json:"users"`
+	Servers       []*ns2server      `json:"servers"`
+	Seeding       seeding           `json:"seeding"`
+	Users         users             `json:"users"`
 }
 
 func loadConfig(path string) error {

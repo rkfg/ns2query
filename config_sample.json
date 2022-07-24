@@ -7,7 +7,11 @@
     "failure_limit": 10,
     "threads": {
         "899251801575026708": {
-            "meme": true
+            "meme": true,
+            "competition": true,
+            "competition_deadline": 17,
+            "competition_announcement": 13,
+            "announce_winner_to": "773505866359242774"
         }
     },
     "servers": [

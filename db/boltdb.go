@@ -20,6 +20,10 @@ func InitBoltDB(bdb *bbolt.DB) {
 			return err
 		}
 		_, err = t.CreateBucketIfNotExists(lowercaseBucketName)
+		if err != nil {
+			return err
+		}
+		_, err = t.CreateBucketIfNotExists(memesBucketName)
 		return err
 	})
 	if err != nil {

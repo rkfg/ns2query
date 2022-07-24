@@ -10,6 +10,7 @@ var (
 	discordBucketName   = []byte("discord_to_steamid")
 	steamidBucketName   = []byte("steamid_to_discord")
 	lowercaseBucketName = []byte("lowercase_to_normalcase")
+	memesBucketName     = []byte("memes")
 	ErrNotFound         = fmt.Errorf("not found")
 )
 
@@ -50,4 +51,20 @@ func NewSteamToDiscordBucket(tx *bbolt.Tx) SteamToDiscordBucket {
 			U32Converter{},
 			StringConverter{},
 		}}
+}
+
+type MemeStatus struct {
+	LastAnnouncementDay int
+	LastWinnerID        string
+}
+type MemesBucket struct {
+	Bucket[string, MemeStatus]
+}
+
+func NewMemesBucket(tx *bbolt.Tx) MemesBucket {
+	return MemesBucket{Bucket[string, MemeStatus]{
+		tx.Bucket(memesBucketName),
+		StringConverter{},
+		StructConverter[MemeStatus]{},
+	}}
 }

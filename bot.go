@@ -154,7 +154,7 @@ func processThreadMessage(s *discordgo.Session, m *discordgo.MessageCreate, t th
 	if !t.Meme {
 		return
 	}
-	if len(m.Attachments) == 0 && !strings.Contains(m.Content, "https://") && !strings.Contains(m.Content, "http://") {
+	if !hasMeme(m.Message) {
 		return
 	}
 	sendChan <- message{channelID: m.ChannelID, reaction: &reaction{messageID: m.ID, emojiID: "\U0001F44D"}}
@@ -308,6 +308,7 @@ func bot() (err error) {
 		}
 	}
 	go statusUpdate(restartChan, dg)
+	startCompetitions(dg)
 	fmt.Println("Bot is now running.  Press CTRL-C to exit.")
 	sc := make(chan os.Signal, 1)
 	signal.Notify(sc, syscall.SIGINT, syscall.SIGTERM, os.Interrupt)
