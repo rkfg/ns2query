@@ -8,6 +8,7 @@ import (
 
 	"github.com/Philipp15b/go-steamapi"
 	"go.etcd.io/bbolt"
+	"rkfg.me/ns2query/db"
 )
 
 var (
@@ -18,7 +19,7 @@ var (
 func playerIDFromDiscordName(username string) (uint32, error) {
 	var discordName string
 	err := bdb.View(func(t *bbolt.Tx) (err error) {
-		discordName, err = newLowercaseBucket(t).findFirstString(username)
+		discordName, err = db.NewLowercaseBucket(t).FindFirstValue(username)
 		return
 	})
 	if err != nil {

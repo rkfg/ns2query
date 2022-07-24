@@ -4,6 +4,12 @@ import (
 	"log"
 
 	"github.com/docopt/docopt-go"
+	"go.etcd.io/bbolt"
+	"rkfg.me/ns2query/db"
+)
+
+var (
+	bdb *bbolt.DB
 )
 
 func main() {
@@ -24,14 +30,14 @@ Options:
 		log.Fatal("error loading config:", err)
 	}
 	if config.BoltDBPath != "" {
-		if err := openBoltDB(config.BoltDBPath); err != nil {
+		if bdb, err = db.OpenBoltDB(config.BoltDBPath); err != nil {
 			log.Fatal("error opening BoltDB database:", err)
 		}
-		initBoltDB()
-		defer closeBoltDB()
+		db.InitBoltDB(bdb)
+		defer db.CloseBoltDB(bdb)
 	}
 	if b, _ := opts.Bool("--reindex"); b {
-		reindex()
+		db.Reindex(bdb)
 	}
 	err = bot()
 	if err != nil {

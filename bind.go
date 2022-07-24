@@ -5,6 +5,7 @@ import (
 	"strings"
 
 	"go.etcd.io/bbolt"
+	"rkfg.me/ns2query/db"
 )
 
 func bind(player string, name string) (id uint32, err error) {
@@ -18,22 +19,22 @@ func bind(player string, name string) (id uint32, err error) {
 
 func putBind(playerID uint32, name string) (err error) {
 	return bdb.Update(func(t *bbolt.Tx) (err error) {
-		err = newUsersBucket(t).put(name, playerID)
+		err = db.NewUsersBucket(t).PutValue(name, playerID)
 		if err != nil {
 			return
 		}
-		steamBucket := newSteamToDiscordBucket(t)
-		err = steamBucket.put(playerID, name)
+		steamBucket := db.NewSteamToDiscordBucket(t)
+		err = steamBucket.PutValue(playerID, name)
 		if err != nil {
 			return
 		}
-		return newLowercaseBucket(t).put(name)
+		return db.NewLowercaseBucket(t).PutValue(name, name)
 	})
 }
 
 func getBind(username string) (playerID uint32, err error) {
 	err = bdb.View(func(t *bbolt.Tx) (err error) {
-		playerID, err = newUsersBucket(t).get(username)
+		playerID, err = db.NewUsersBucket(t).GetValue(username)
 		return
 	})
 	if err != nil {
@@ -44,20 +45,20 @@ func getBind(username string) (playerID uint32, err error) {
 
 func deleteBind(name string) (err error) {
 	return bdb.Update(func(t *bbolt.Tx) (err error) {
-		userBucket := newUsersBucket(t)
-		steamBucket := newSteamToDiscordBucket(t)
-		steamId, _ := userBucket.get(name)
-		err = userBucket.del(name)
+		userBucket := db.NewUsersBucket(t)
+		steamBucket := db.NewSteamToDiscordBucket(t)
+		steamId, _ := userBucket.GetValue(name)
+		err = userBucket.DeleteValue(name)
 		if err != nil {
 			return
 		}
 		if steamId > 0 {
-			err = steamBucket.del(steamId)
+			err = steamBucket.DeleteValue(steamId)
 			if err != nil {
 				return
 			}
 		}
-		err = newLowercaseBucket(t).del(strings.ToLower(name))
+		err = db.NewLowercaseBucket(t).DeleteValue(strings.ToLower(name))
 		return
 	})
 }

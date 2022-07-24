@@ -1,22 +1,15 @@
-package main
+package db
 
 import (
-	"encoding/binary"
-
 	"go.etcd.io/bbolt"
 )
 
-var (
-	bdb                 *bbolt.DB
-)
-
-
-func openBoltDB(dbPath string) (err error) {
+func OpenBoltDB(dbPath string) (bdb *bbolt.DB, err error) {
 	bdb, err = bbolt.Open(dbPath, 0600, nil)
 	return
 }
 
-func initBoltDB() {
+func InitBoltDB(bdb *bbolt.DB) {
 	err := bdb.Update(func(t *bbolt.Tx) error {
 		_, err := t.CreateBucketIfNotExists(discordBucketName)
 		if err != nil {
@@ -34,27 +27,11 @@ func initBoltDB() {
 	}
 }
 
-func closeBoltDB() error {
+func CloseBoltDB(bdb *bbolt.DB) error {
 	return bdb.Close()
 }
 
-func uint32FromBytes(val []byte) uint32 {
-	return binary.LittleEndian.Uint32(val)
-}
-
-func uint32ToBytes(val uint32) []byte {
-	var buf [4]byte
-	binary.LittleEndian.PutUint32(buf[:], val)
-	return buf[:]
-}
-
-func uint64ToBytes(val uint64) []byte {
-	var buf [8]byte
-	binary.LittleEndian.PutUint64(buf[:], val)
-	return buf[:]
-}
-
-func reindex() {
+func Reindex(bdb *bbolt.DB) {
 	bdb.Update(func(t *bbolt.Tx) error {
 		discord := t.Bucket(discordBucketName)
 		steam := t.Bucket(steamidBucketName)

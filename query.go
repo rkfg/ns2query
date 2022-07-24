@@ -13,6 +13,7 @@ import (
 	"github.com/bwmarrin/discordgo"
 	"github.com/rumblefrog/go-a2s"
 	"go.etcd.io/bbolt"
+	"rkfg.me/ns2query/db"
 )
 
 const (
@@ -205,10 +206,10 @@ func (srv *ns2server) checkRegulars(ids []uint32) {
 		}
 	}
 	bdb.View(func(t *bbolt.Tx) error {
-		steamBucket := newSteamToDiscordBucket(t)
+		steamBucket := db.NewSteamToDiscordBucket(t)
 		srv.regularNames = srv.regularNames[:0]
 		for _, id := range ids {
-			name, err := steamBucket.get(id)
+			name, err := steamBucket.GetValue(id)
 			if err == nil {
 				srv.regularNames = append(srv.regularNames, name)
 				if _, exists := srv.newRegulars[id]; !exists {
