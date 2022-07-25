@@ -119,6 +119,10 @@ func announceMOTD(s *discordgo.Session, channelID string, deadlineHour int) erro
 func competition(s *discordgo.Session, channelID string, t thread) {
 	for {
 		now := time.Now().UTC()
+		nextAnnouncement := now.Truncate(time.Hour * 24).Add(time.Hour * time.Duration(t.CompetitionAnnouncement))
+		if now.Hour() >= t.CompetitionAnnouncement { // next announcement is tomorrow
+			nextAnnouncement = nextAnnouncement.Add(time.Hour * 24)
+		}
 		if now.Hour() == t.CompetitionAnnouncement {
 			err := bdb.View(func(tx *bbolt.Tx) error {
 				memesBucket := db.NewMemesBucket(tx)
@@ -132,18 +136,18 @@ func competition(s *discordgo.Session, channelID string, t thread) {
 				return nil
 			})
 			if err == ErrAlreadyAnnounced {
-				log.Printf("Meme from channel %s has already been announced to %s, sleeping for 12 hours",
+				log.Printf("Meme from channel %s has already been announced to %s",
 					channelID, t.AnnounceWinnerTo)
-				time.Sleep(time.Hour * 12)
-			}
-			if err != nil && err != db.ErrNotFound {
-				log.Printf("Error querying meme announcement status: %s", err)
 			} else {
-				announceMOTD(s, channelID, t.CompetitionDeadline)
-				time.Sleep(time.Hour * 12)
+				if err != nil && err != db.ErrNotFound {
+					log.Printf("Error querying meme announcement status: %s", err)
+				} else {
+					announceMOTD(s, channelID, t.CompetitionDeadline)
+				}
 			}
 		}
-		time.Sleep(time.Minute)
+		log.Printf("Next announcement time: %s, sleeping until then", nextAnnouncement.Format("02-01-2006 15:04:05"))
+		time.Sleep(time.Until(nextAnnouncement))
 	}
 }
 
