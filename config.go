@@ -88,6 +88,7 @@ type thread struct {
 	Meme                    bool   `json:"meme"`
 	Competition             bool   `json:"competition"`
 	CompetitionDeadline     int    `json:"competition_deadline"`
+	CompetitionLength       int    `json:"competition_length"`
 	CompetitionAnnouncement int    `json:"competition_announcement"`
 	AnnounceWinnerTo        string `json:"announce_winner_to"`
 }

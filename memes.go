@@ -19,9 +19,10 @@ func hasMeme(m *discordgo.Message) bool {
 	return len(m.Attachments) > 0 || strings.Contains(m.Content, "https://") || strings.Contains(m.Content, "http://")
 }
 
-func chooseMemeOfTheDay(s *discordgo.Session, memeChannelID string, deadlineHour int) ([]*discordgo.Message, int, error) {
-	owlTime := time.Now().UTC().Truncate(time.Hour*24).AddDate(0, 0, -2).Add(time.Hour * time.Duration(deadlineHour))
-	log.Printf("OWL time: %s", owlTime.Format("02-01-2006 15:04:05"))
+func chooseMemeOfTheDay(s *discordgo.Session, memeChannelID string, deadlineHour int, dayLen int) ([]*discordgo.Message, int, error) {
+	notBefore := time.Now().UTC().Truncate(time.Hour*24).AddDate(0, 0, -2).Add(time.Hour * time.Duration(deadlineHour))
+	notAfter := notBefore.Add(time.Hour * time.Duration(dayLen))
+	log.Printf("OWL time from %s to %s", notBefore.Format(time.Stamp), notAfter.Format(time.Stamp))
 	allMessages := []*discordgo.Message{}
 	beforeID := ""
 	for {
@@ -33,7 +34,7 @@ func chooseMemeOfTheDay(s *discordgo.Session, memeChannelID string, deadlineHour
 		if len(allMessages) == 0 {
 			return nil, 0, nil
 		}
-		if messages[len(messages)-1].Timestamp.Before(owlTime) {
+		if messages[len(messages)-1].Timestamp.Before(notBefore) {
 			break
 		}
 		beforeID = messages[len(messages)-1].ID
@@ -56,7 +57,7 @@ func chooseMemeOfTheDay(s *discordgo.Session, memeChannelID string, deadlineHour
 		log.Printf("Last winner message ID: %s", lastWinnerID)
 	}
 	for _, m := range allMessages {
-		if !hasMeme(m) || m.Timestamp.Before(owlTime) || m.ID == lastWinnerID {
+		if !hasMeme(m) || m.Timestamp.Before(notBefore) || m.Timestamp.After(notAfter) || m.ID == lastWinnerID {
 			continue
 		}
 		url := m.Content
@@ -79,11 +80,11 @@ func chooseMemeOfTheDay(s *discordgo.Session, memeChannelID string, deadlineHour
 	return winners, maxUpvotes, nil
 }
 
-func announceMOTD(s *discordgo.Session, channelID string, deadlineHour int) error {
+func announceMOTD(s *discordgo.Session, channelID string, deadlineHour int, dayLen int) error {
 	if !config.Threads[channelID].Meme {
 		return nil
 	}
-	winners, upvotes, err := chooseMemeOfTheDay(s, channelID, deadlineHour)
+	winners, upvotes, err := chooseMemeOfTheDay(s, channelID, deadlineHour, dayLen)
 	if err != nil {
 		return err
 	}
@@ -117,6 +118,12 @@ func announceMOTD(s *discordgo.Session, channelID string, deadlineHour int) erro
 }
 
 func competition(s *discordgo.Session, channelID string, t thread) {
+	if t.CompetitionLength == 0 {
+		t.CompetitionLength = 24
+	}
+	log.Printf("Running meme competition in channel %s, announcing at %d:00 (UTC+0) to channel %s, "+
+		"considering all memes since %d:00 (UTC+0) of the prior day for the next %d hours", channelID, t.CompetitionAnnouncement,
+		t.AnnounceWinnerTo, t.CompetitionDeadline, t.CompetitionLength)
 	for {
 		now := time.Now().UTC()
 		nextAnnouncement := now.Truncate(time.Hour * 24).Add(time.Hour * time.Duration(t.CompetitionAnnouncement))
@@ -142,7 +149,7 @@ func competition(s *discordgo.Session, channelID string, t thread) {
 				if err != nil && err != db.ErrNotFound {
 					log.Printf("Error querying meme announcement status: %s", err)
 				} else {
-					announceMOTD(s, channelID, t.CompetitionDeadline)
+					announceMOTD(s, channelID, t.CompetitionDeadline, t.CompetitionLength)
 				}
 			}
 		}
