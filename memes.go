@@ -20,7 +20,7 @@ func hasMeme(m *discordgo.Message) bool {
 }
 
 func chooseMemeOfTheDay(s *discordgo.Session, memeChannelID string, deadlineHour int) ([]*discordgo.Message, int, error) {
-	owlTime := time.Now().UTC().Truncate(time.Hour*24).AddDate(0, 0, -1).Add(time.Hour * time.Duration(deadlineHour))
+	owlTime := time.Now().UTC().Truncate(time.Hour*24).AddDate(0, 0, -2).Add(time.Hour * time.Duration(deadlineHour))
 	log.Printf("OWL time: %s", owlTime.Format("02-01-2006 15:04:05"))
 	allMessages := []*discordgo.Message{}
 	beforeID := ""
