@@ -303,8 +303,10 @@ func bot() (err error) {
 		config.Servers[i].query()
 	}
 	for tid := range config.Threads {
-		if err := dg.ThreadJoin(tid); err != nil {
-			log.Printf("Error joining thread %s: %s", tid, err)
+		if config.Threads[tid].Join {
+			if err := dg.ThreadJoin(tid); err != nil {
+				log.Printf("Error joining thread %s: %s", tid, err)
+			}
 		}
 	}
 	go statusUpdate(restartChan, dg)

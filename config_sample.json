@@ -7,6 +7,7 @@
     "failure_limit": 10,
     "threads": {
         "899251801575026708": {
+            "join": true,
             "meme": true,
             "competition": true,
             "competition_deadline": 17,
