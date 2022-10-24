@@ -34,7 +34,7 @@ func chooseMemeOfTheDay(s *discordgo.Session, memeChannelID string, deadlineHour
 		if len(allMessages) == 0 {
 			return nil, 0, nil
 		}
-		if messages[len(messages)-1].Timestamp.Before(notBefore) {
+		if len(messages) == 0 || messages[len(messages)-1].Timestamp.Before(notBefore) {
 			break
 		}
 		beforeID = messages[len(messages)-1].ID
