@@ -79,9 +79,10 @@ func (s *ns2server) playersString() string {
 }
 
 type seeding struct {
-	Seeding    int `json:"seeding"`
-	AlmostFull int `json:"almost_full"`
-	Cooldown   int `json:"cooldown"`
+	Seeding    int               `json:"seeding"`
+	AlmostFull int               `json:"almost_full"`
+	Cooldown   int               `json:"cooldown"`
+	PingRoles  map[string]string `json:"ping_roles"`
 }
 
 type thread struct {

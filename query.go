@@ -81,6 +81,13 @@ func (srv *ns2server) serverStatus() *discordgo.MessageSend {
 	return &msg
 }
 
+func maybeMention(stateName string) string {
+	if roleID, ok := config.Seeding.PingRoles[stateName]; ok {
+		return fmt.Sprintf("<@&%s>", roleID)
+	}
+	return ""
+}
+
 func (srv *ns2server) maybeNotify() {
 	playersCount := len(srv.players)
 	newState := empty
@@ -103,13 +110,16 @@ func (srv *ns2server) maybeNotify() {
 			msg := srv.serverStatus()
 			switch newState {
 			case seedingstarted:
+				msg.Content = maybeMention("seeding")
 				msg.Embed.Description = "Seeding started! Players on the server: " + srv.playersString()
 				srv.maxStateToMessage = specsonly
 				sendChan <- message{MessageSend: msg}
 			case almostfull:
+				msg.Content = maybeMention("almost_full")
 				msg.Embed.Description = "Server is almost full!"
 				sendChan <- message{MessageSend: msg}
 			case specsonly:
+				msg.Content = maybeMention("full")
 				msg.Embed.Description = "Server is full but you can still make it!"
 				srv.maxStateToMessage = seedingstarted
 				sendChan <- message{MessageSend: msg}
