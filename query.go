@@ -137,6 +137,7 @@ func (srv *ns2server) maybeNotify() {
 }
 
 func (srv *ns2server) queryServer(client *a2s.Client) error {
+	srv.players = srv.players[:0]
 	info, err := client.QueryInfo()
 	if err != nil {
 		return queryError{"server info query: %s", err}
@@ -159,7 +160,6 @@ func (srv *ns2server) queryServer(client *a2s.Client) error {
 	if err != nil {
 		return queryError{"player query: %s", err}
 	}
-	srv.players = srv.players[:0]
 	for _, p := range playersInfo.Players {
 		srv.players = append(srv.players, p.Name)
 	}
