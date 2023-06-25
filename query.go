@@ -2,6 +2,7 @@ package main
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"log"
 	"net"
@@ -19,15 +20,6 @@ import (
 const (
 	timeFormat = "2 Jan 2006 15:04:05 -0700"
 )
-
-type queryError struct {
-	description string
-	err         error
-}
-
-func (e queryError) Error() string {
-	return fmt.Sprintf(e.description, e.err)
-}
 
 func (srv *ns2server) serverStatus() *discordgo.MessageSend {
 	specSlots := srv.SpecSlots
@@ -136,29 +128,34 @@ func (srv *ns2server) maybeNotify() {
 	}
 }
 
-func (srv *ns2server) queryServer(client *a2s.Client) error {
+func (srv *ns2server) queryServer() error {
+	client, err := a2s.NewClient(srv.Address)
+	if err != nil {
+		return fmt.Errorf("error creating client: %w", err)
+	}
+	defer client.Close()
 	srv.players = srv.players[:0]
 	info, err := client.QueryInfo()
 	if err != nil {
-		return queryError{"server info query: %s", err}
+		return fmt.Errorf("server info query: %w", err)
 	}
 	srv.currentMap = info.Map
 	rules, err := client.QueryRules()
 	if err != nil {
-		return queryError{"rules query: %s", err}
+		return fmt.Errorf("rules query: %w", err)
 	}
 	srv.avgSkill = 0
 	avgSkillStr := rules.Rules["AverageSkill"]
 	if avgSkillStr != "nan" && avgSkillStr != "" {
 		avgSkill, err := strconv.ParseFloat(avgSkillStr, 32)
 		if err != nil {
-			return queryError{"parsing avg skill: %s", err}
+			return fmt.Errorf("parsing avg skill: %w", err)
 		}
 		srv.avgSkill = int(avgSkill)
 	}
 	playersInfo, err := client.QueryPlayer()
 	if err != nil {
-		return queryError{"player query: %s", err}
+		return fmt.Errorf("player query: %w", err)
 	}
 	for _, p := range playersInfo.Players {
 		srv.players = append(srv.players, p.Name)
@@ -168,17 +165,15 @@ func (srv *ns2server) queryServer(client *a2s.Client) error {
 }
 
 func (srv *ns2server) serverLoop() {
-	client, err := a2s.NewClient(srv.Address)
-	if err != nil {
-		log.Println("error creating client:", err)
-		return
-	}
-	defer client.Close()
-	log.Printf("Client created for %s [%s]", srv.Name, srv.Address)
 	for {
-		err := srv.queryServer(client)
+		err := srv.queryServer()
 		if err != nil {
 			log.Printf("Error: %s", err)
+			if neterr, ok := errors.Unwrap(err).(*net.OpError); ok && neterr.Op == "write" {
+				log.Println("Error during sending data (our IP changed?), restarting myself")
+				close(srv.restartChan)
+				return
+			}
 			srv.failures++
 			if srv.failures > config.FailureLimit && srv.downSince == nil {
 				now := time.Now().In(time.UTC)
@@ -192,13 +187,6 @@ func (srv *ns2server) serverLoop() {
 				srv.downSince = nil
 			}
 			srv.failures = 0
-		}
-		if err, ok := err.(queryError); ok {
-			if err, ok := err.err.(*net.OpError); ok && err.Op == "write" {
-				log.Println("Error during sending data (our IP changed?), restarting myself")
-				close(srv.restartChan)
-				return
-			}
 		}
 		select {
 		case <-time.After(config.QueryInterval):
@@ -241,7 +229,7 @@ func (srv *ns2server) getPlayerIDs() (result []uint32, err error) {
 	httpClient := http.Client{Timeout: time.Second * 3}
 	resp, err := httpClient.Get(srv.IDURL)
 	if err != nil {
-		return nil, fmt.Errorf("Error querying %s: %w", srv.IDURL, err)
+		return nil, fmt.Errorf("error querying %s: %w", srv.IDURL, err)
 	} else {
 		err = json.NewDecoder(resp.Body).Decode(&result)
 	}
