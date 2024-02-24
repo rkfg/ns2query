@@ -26,7 +26,9 @@
             "announce_delay": 300,
             "regular_timeout": 3600,
             "regular_channel_id": "123412342564546234",
-            "status_template": "{{ .ServerName }} Pl:{{ .Players }}/{{ .PlayerSlots }}+{{ .SpecSlots }}={{ .TotalSlots }};{{ .Map }}@{{ .Skill }}"
+            "status_template": "{{ .ServerName }} Pl:{{ .Players }}/{{ .PlayerSlots }}+{{ .SpecSlots }}={{ .TotalSlots }};{{ .Map }}@{{ .Skill }}",
+            "down_notify_ids": ["373545713602910362", "1231241134234"],
+            "up_notify_ids": ["373545713602910362"]
         },
         {
             "name": "Server 2",

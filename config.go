@@ -24,31 +24,33 @@ type regular struct {
 }
 
 type ns2server struct {
-	Name               string        `json:"name"`
-	Address            string        `json:"address"`
-	SpecSlots          int           `json:"spec_slots"`
-	PlayerSlots        int           `json:"player_slots"`
-	StatusTemplate     string        `json:"status_template"`
-	IDURL              string        `json:"id_url"`
-	QueryIDInterval    time.Duration `json:"query_id_interval"`
-	AnnounceDelay      time.Duration `json:"announce_delay"`
-	RegularTimeout     time.Duration `json:"regular_timeout"`
-	RegularChannelID   string        `json:"regular_channel_id"`
-	regularTimeouts    map[uint32]*time.Time
-	regularNames       []string
-	newRegulars        map[uint32]regular
-	announceScheduled  bool
-	statusTemplate     *template.Template
-	players            []string
-	serverState        state
-	maxStateToMessage  state
-	lastStateAnnounced state
-	lastStatePromotion time.Time
-	currentMap         string
-	avgSkill           int
-	restartChan        chan struct{}
-	failures           int
-	downSince          *time.Time
+	Name                 string        `json:"name"`
+	Address              string        `json:"address"`
+	SpecSlots            int           `json:"spec_slots"`
+	PlayerSlots          int           `json:"player_slots"`
+	StatusTemplate       string        `json:"status_template"`
+	IDURL                string        `json:"id_url"`
+	QueryIDInterval      time.Duration `json:"query_id_interval"`
+	AnnounceDelay        time.Duration `json:"announce_delay"`
+	RegularTimeout       time.Duration `json:"regular_timeout"`
+	RegularChannelID     string        `json:"regular_channel_id"`
+	DownNotifyDiscordIDs []string      `json:"down_notify_ids"`
+	UpNotifyDiscordIDs   []string      `json:"up_notify_ids"`
+	regularTimeouts      map[uint32]*time.Time
+	regularNames         []string
+	newRegulars          map[uint32]regular
+	announceScheduled    bool
+	statusTemplate       *template.Template
+	players              []string
+	serverState          state
+	maxStateToMessage    state
+	lastStateAnnounced   state
+	lastStatePromotion   time.Time
+	currentMap           string
+	avgSkill             int
+	restartChan          chan struct{}
+	failures             int
+	downSince            *time.Time
 }
 
 func (s *ns2server) playersString() string {
@@ -76,6 +78,22 @@ func (s *ns2server) playersString() string {
 		return fmt.Sprintf("%s and %d connecting player%s", result, unknowns, suffix)
 	}
 	return result
+}
+
+func idsToPing(ids []string) (result string) {
+	for _, id := range ids {
+		result += fmt.Sprintf("<@%s>", id)
+	}
+	return
+}
+
+func (s *ns2server) formatDowntimeMsg(down bool) string {
+	if down {
+		return fmt.Sprintf("Server %s is down! %s", s.Name, idsToPing(s.DownNotifyDiscordIDs))
+	} else {
+		return fmt.Sprintf("Server %s is back up! Was down since: %s %s",
+			s.Name, s.downSince.Format(timeFormat), idsToPing(s.UpNotifyDiscordIDs))
+	}
 }
 
 type seeding struct {

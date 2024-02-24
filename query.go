@@ -178,12 +178,11 @@ func (srv *ns2server) serverLoop() {
 			if srv.failures > config.FailureLimit && srv.downSince == nil {
 				now := time.Now().In(time.UTC)
 				srv.downSince = &now
-				sendChan <- message{MessageSend: &discordgo.MessageSend{Content: fmt.Sprintf("Server %s is down!", srv.Name)}}
+				sendChan <- message{MessageSend: &discordgo.MessageSend{Content: srv.formatDowntimeMsg(true)}}
 			}
 		} else {
 			if srv.failures > config.FailureLimit && srv.downSince != nil {
-				sendChan <- message{MessageSend: &discordgo.MessageSend{Content: fmt.Sprintf("Server %s is back up! Was down since: %s",
-					srv.Name, srv.downSince.Format(timeFormat))}}
+				sendChan <- message{MessageSend: &discordgo.MessageSend{Content: srv.formatDowntimeMsg(false)}}
 				srv.downSince = nil
 			}
 			srv.failures = 0

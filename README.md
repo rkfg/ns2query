@@ -33,6 +33,8 @@ player (aka regular) that left the server is forgotten by the bot and can be ann
 case the player leaves and rejoins in a short time (because of a crash or otherwise). If you want these announcements to go to a different
 channel, set `regular_channel_id`.
 
+`down_notify_ids` and `up_notify_ids` may be optionally set to arrays of Discord IDs to notify (ping) if the server goes down and back online. It's NOT your Discord username but a long unique number ID that you can find by right-clicking a user and choosing "Copy User ID" in the dropdown menu. These parameters should ALWAYS be set as arrays even if you only want to ping one user.
+
 If you already have a database that's been populated before these changes, run the bot with `--reindex` to fill the Steam ID => Discord
 index. All new players registering themselves with `-bind` will be indexed automatically.
 
