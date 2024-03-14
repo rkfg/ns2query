@@ -274,6 +274,11 @@ func bot() (err error) {
 	dg.AddHandler(handleCommand)
 	go sendMsg(sendChan, dg)
 	restartChan := make(chan struct{})
+	if config.QueryTimeout < 1 {
+		config.QueryTimeout = time.Second * 3
+	} else {
+		config.QueryTimeout *= time.Second
+	}
 	for i := range config.Servers {
 		config.Servers[i].restartChan = restartChan
 		if config.Servers[i].StatusTemplate != "" {

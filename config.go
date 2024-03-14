@@ -123,6 +123,7 @@ var config struct {
 	BoltDBPath    string            `json:"bdb_database_path"`
 	QueryInterval time.Duration     `json:"query_interval"`
 	FailureLimit  int               `json:"failure_limit"`
+	QueryTimeout  time.Duration     `json:"query_timeout"`
 	Servers       []*ns2server      `json:"servers"`
 	Seeding       seeding           `json:"seeding"`
 	Users         users             `json:"users"`
