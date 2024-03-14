@@ -129,38 +129,49 @@ func (srv *ns2server) maybeNotify() {
 }
 
 func (srv *ns2server) queryServer() error {
-	client, err := a2s.NewClient(srv.Address)
+	client, err := a2s.NewClient(srv.Address, a2s.TimeoutOption(config.QueryTimeout))
 	if err != nil {
 		return fmt.Errorf("error creating client: %w", err)
 	}
 	defer client.Close()
-	srv.players = srv.players[:0]
+	errorcount := 0
 	info, err := client.QueryInfo()
 	if err != nil {
-		return fmt.Errorf("server info query: %w", err)
+		log.Printf("server info query: %s", err)
+		errorcount++
+	} else {
+		srv.currentMap = info.Map
 	}
-	srv.currentMap = info.Map
 	rules, err := client.QueryRules()
 	if err != nil {
-		return fmt.Errorf("rules query: %w", err)
-	}
-	srv.avgSkill = 0
-	avgSkillStr := rules.Rules["AverageSkill"]
-	if avgSkillStr != "nan" && avgSkillStr != "" {
-		avgSkill, err := strconv.ParseFloat(avgSkillStr, 32)
-		if err != nil {
-			return fmt.Errorf("parsing avg skill: %w", err)
+		log.Printf("rules query: %s", err)
+		errorcount++
+	} else {
+		srv.avgSkill = 0
+		avgSkillStr := rules.Rules["AverageSkill"]
+		if avgSkillStr != "nan" && avgSkillStr != "" {
+			avgSkill, err := strconv.ParseFloat(avgSkillStr, 32)
+			if err != nil {
+				log.Printf("parsing avg skill: %s", err)
+			} else {
+				srv.avgSkill = int(avgSkill)
+			}
 		}
-		srv.avgSkill = int(avgSkill)
 	}
 	playersInfo, err := client.QueryPlayer()
 	if err != nil {
-		return fmt.Errorf("player query: %w", err)
-	}
-	for _, p := range playersInfo.Players {
-		srv.players = append(srv.players, p.Name)
+		log.Printf("player query: %s", err)
+		errorcount++
+	} else {
+		srv.players = srv.players[:0]
+		for _, p := range playersInfo.Players {
+			srv.players = append(srv.players, p.Name)
+		}
 	}
 	srv.maybeNotify()
+	if errorcount > 2 {
+		return fmt.Errorf("all server queries failed")
+	}
 	return nil
 }
 
