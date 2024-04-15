@@ -157,7 +157,10 @@ func processThreadMessage(s *discordgo.Session, m *discordgo.MessageCreate, t th
 	if !hasMeme(m.Message) {
 		return
 	}
-	sendChan <- message{channelID: m.ChannelID, reaction: &reaction{messageID: m.ID, emojiID: "\U0001F44D"}}
+	go func() {
+		time.Sleep(time.Second * 2)
+		sendChan <- message{channelID: m.ChannelID, reaction: &reaction{messageID: m.ID, emojiID: "\U0001F44D"}}
+	}()
 }
 
 func handleCommand(s *discordgo.Session, m *discordgo.MessageCreate) {
