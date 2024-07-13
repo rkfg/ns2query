@@ -42,7 +42,7 @@ var configs = []buildConfig{
 	{os: "windows", arch: "386", suffix: "win32", osSuffix: ".exe"},
 }
 
-func pack(cfg buildConfig, wg *sync.WaitGroup) {
+func pack(cfg buildConfig) {
 	zipFile := path.Join("release", cfg.zipName())
 	f, err := os.Create(zipFile)
 	if err != nil {
@@ -83,7 +83,7 @@ func build(cfg buildConfig, versionFlags string, wg *sync.WaitGroup) {
 	if err != nil {
 		panic(fmt.Sprintf("Build failed! Config: %+v, error: %s, args: %s, output:\n%s", cfg, err, cmd.Args, out))
 	}
-	pack(cfg, wg)
+	pack(cfg)
 }
 
 func versionFlags() string {

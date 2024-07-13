@@ -124,6 +124,7 @@ func competition(s *discordgo.Session, channelID string, t thread) {
 	log.Printf("Running meme competition in channel %s, announcing at %d:00 (UTC+0) to channel %s, "+
 		"considering all memes since %d:00 (UTC+0) of the prior day for the next %d hours", channelID, t.CompetitionAnnouncement,
 		t.AnnounceWinnerTo, t.CompetitionDeadline, t.CompetitionLength)
+	s.ThreadJoin(channelID)
 	for {
 		now := time.Now().UTC()
 		nextAnnouncement := now.Truncate(time.Hour * 24).Add(time.Hour * time.Duration(t.CompetitionAnnouncement))

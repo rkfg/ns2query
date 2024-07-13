@@ -106,6 +106,7 @@ type seeding struct {
 type thread struct {
 	Join                    bool   `json:"join"`
 	Meme                    bool   `json:"meme"`
+	NoSelfUpvote            bool   `json:"no_self_upvote"`
 	Competition             bool   `json:"competition"`
 	CompetitionDeadline     int    `json:"competition_deadline"`
 	CompetitionLength       int    `json:"competition_length"`

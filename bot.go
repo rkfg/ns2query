@@ -22,6 +22,9 @@ const (
 	cmdPrefix       = "-"
 	lowercasePrefix = "/lc/"
 	discordPrefix   = "!"
+	thumbsupEmoji   = "\U0001F44D"
+	clownEmoji      = "\U0001F921"
+	winkEmoji       = "\U0001F609"
 )
 
 type reaction struct {
@@ -31,8 +34,9 @@ type reaction struct {
 
 type message struct {
 	*discordgo.MessageSend
-	*reaction
-	channelID string
+	reactionAdd    *reaction
+	reactionRemove *reaction
+	channelID      string
 }
 
 type currentServerStatus struct {
@@ -159,7 +163,20 @@ func processThreadMessage(s *discordgo.Session, m *discordgo.MessageCreate, t th
 	}
 	go func() {
 		time.Sleep(time.Second * 2)
-		sendChan <- message{channelID: m.ChannelID, reaction: &reaction{messageID: m.ID, emojiID: "\U0001F44D"}}
+		msg, err := s.State.Message(m.ChannelID, m.ID)
+		if err != nil {
+			log.Printf("Error getting message %s from channel %s: %s", m.ID, m.ChannelID, err)
+			return
+		}
+		s.Lock()
+		defer s.Unlock()
+		for _, r := range msg.Reactions {
+			if r.Emoji.Name == thumbsupEmoji && r.Emoji.User.ID == m.Author.ID {
+				log.Printf("Message %s has already been upvoted", m.ID)
+				return
+			}
+		}
+		sendChan <- message{channelID: m.ChannelID, reactionAdd: &reaction{messageID: m.ID, emojiID: thumbsupEmoji}}
 	}()
 }
 
@@ -184,6 +201,88 @@ func handleCommand(s *discordgo.Session, m *discordgo.MessageCreate) {
 		if response != nil {
 			sendChan <- message{MessageSend: response, channelID: m.ChannelID}
 		}
+	}
+}
+
+func handleReactionRemove(s *discordgo.Session, m *discordgo.MessageReactionRemove) {
+	msg, err := s.State.Message(m.ChannelID, m.MessageID)
+	if err != nil {
+		log.Printf("Error getting message %s from channel %s: %s", m.MessageID, m.ChannelID, err)
+		return
+	}
+	s.Lock()
+	defer s.Unlock()
+	for _, r := range msg.Reactions {
+		if r.Emoji.Name == m.Emoji.Name {
+			r.Count--
+		}
+		if m.UserID == s.State.User.ID {
+			r.Me = false
+		}
+	}
+}
+
+func handleReactionAdd(s *discordgo.Session, m *discordgo.MessageReactionAdd) {
+	msg, err := s.State.Message(m.ChannelID, m.MessageID)
+	if err != nil {
+		log.Printf("Error getting message %s from channel %s: %s", m.MessageID, m.ChannelID, err)
+		return
+	}
+	s.Lock()
+	defer s.Unlock()
+	reactionAdded := false
+	for _, r := range msg.Reactions {
+		if r.Emoji.Name != m.Emoji.Name || r.Emoji.User.ID != m.UserID {
+			continue
+		}
+		r.Count++
+		if m.UserID == s.State.User.ID {
+			r.Me = true
+		}
+		reactionAdded = true
+	}
+	if !reactionAdded {
+		e := m.Emoji
+		e.User = m.Member.User
+		msg.Reactions = append(msg.Reactions, &discordgo.MessageReactions{
+			Count: 1,
+			Me:    m.UserID == s.State.User.ID,
+			Emoji: &e,
+		})
+	}
+	if m.UserID == s.State.User.ID { // own reaction
+		return
+	}
+	if m.Emoji.Name != thumbsupEmoji {
+		return
+	}
+	t, ok := config.Threads[m.ChannelID]
+	if !ok || !t.NoSelfUpvote {
+		return
+	}
+	if m.UserID != msg.Author.ID { // someone else's reaction
+		return
+	}
+	noReactions := true
+	for _, r := range msg.Reactions {
+		if r.Count > 0 && r.Me {
+			noReactions = false
+			sendChan <- message{channelID: m.ChannelID,
+				reactionRemove: &reaction{
+					messageID: m.MessageID,
+					emojiID:   thumbsupEmoji,
+				}, reactionAdd: &reaction{
+					messageID: m.MessageID,
+					emojiID:   clownEmoji,
+				}}
+		}
+	}
+	if noReactions {
+		sendChan <- message{channelID: m.ChannelID,
+			reactionAdd: &reaction{
+				messageID: m.MessageID,
+				emojiID:   winkEmoji,
+			}}
 	}
 }
 
@@ -241,8 +340,11 @@ func sendMsg(c chan message, s *discordgo.Session) {
 		if msg.MessageSend != nil {
 			s.ChannelMessageSendComplex(channelID, msg.MessageSend)
 		}
-		if msg.reaction != nil {
-			s.MessageReactionAdd(channelID, msg.messageID, msg.emojiID)
+		if msg.reactionAdd != nil {
+			s.MessageReactionAdd(channelID, msg.reactionAdd.messageID, msg.reactionAdd.emojiID)
+		}
+		if msg.reactionRemove != nil {
+			s.MessageReactionRemove(channelID, msg.reactionRemove.messageID, msg.reactionRemove.emojiID, "@me")
 		}
 		time.Sleep(time.Second)
 	}
@@ -274,7 +376,10 @@ func bot() (err error) {
 		return
 	}
 	defer dg.Close()
+	dg.State.MaxMessageCount = 1000
 	dg.AddHandler(handleCommand)
+	dg.AddHandler(handleReactionAdd)
+	dg.AddHandler(handleReactionRemove)
 	go sendMsg(sendChan, dg)
 	restartChan := make(chan struct{})
 	if config.QueryTimeout < 1 {
