@@ -52,7 +52,9 @@ type currentServerStatus struct {
 
 var (
 	sendChan         = make(chan message, 10)
+	urlsChan         = make(chan msgUrls, 10)
 	discordNameRegex = regexp.MustCompile(`^.*#\d{4}$`)
+	urlRegex         = regexp.MustCompile(`(https?://.*)(?:\s|$)`)
 )
 
 func parseFields(fields []string, author *discordgo.User, channelID string) (response *discordgo.MessageSend, err error) {
@@ -162,6 +164,29 @@ func processThreadMessage(s *discordgo.Session, m *discordgo.MessageCreate, t th
 		return
 	}
 	go func() {
+		if t.TrackReposts {
+			urls := []string{}
+			if len(m.Message.Attachments) > 0 {
+				for _, a := range m.Message.Attachments {
+					u := a.ProxyURL
+					if strings.HasPrefix(a.ContentType, "video/") {
+						u = a.ProxyURL + "format=webp"
+					} else {
+						if !strings.HasPrefix(a.ContentType, "image/") {
+							continue
+						}
+					}
+					urls = append(urls, u)
+				}
+			}
+			mu := urlRegex.FindAllString(m.Message.Content, -1)
+			if len(mu) > 0 {
+				urls = append(urls, mu...)
+			}
+			if len(urls) > 0 {
+				urlsChan <- msgUrls{Message: m.Message, Urls: urls}
+			}
+		}
 		time.Sleep(time.Second * 2)
 		msg, err := s.State.Message(m.ChannelID, m.ID)
 		if err != nil {
@@ -381,6 +406,7 @@ func bot() (err error) {
 	dg.AddHandler(handleReactionAdd)
 	dg.AddHandler(handleReactionRemove)
 	go sendMsg(sendChan, dg)
+	go startReposts(urlsChan, sendChan)
 	restartChan := make(chan struct{})
 	if config.QueryTimeout < 1 {
 		config.QueryTimeout = time.Second * 3

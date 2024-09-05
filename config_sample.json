@@ -10,6 +10,7 @@
         "899251801575026708": {
             "join": true,
             "meme": true,
+            "track_reposts": true,
             "no_self_upvote": true,
             "competition": true,
             "competition_deadline": 17,
