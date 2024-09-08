@@ -53,7 +53,7 @@ type currentServerStatus struct {
 var (
 	sendChan         = make(chan message, 10)
 	urlsChan         = make(chan msgUrls, 10)
-	discordNameRegex = regexp.MustCompile(`^.*#\d{4}$`)
+	discordNameRegex = regexp.MustCompile(`^.*#(?:\d{4}|0)$`)
 	urlRegex         = regexp.MustCompile(`(https?://.*)(?:\s|$)`)
 )
 
