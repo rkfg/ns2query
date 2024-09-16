@@ -15,6 +15,7 @@
             "competition": true,
             "competition_deadline": 17,
             "competition_announcement": 13,
+            "competition_length": 30,
             "announce_winner_to": "773505866359242774"
         }
     },
