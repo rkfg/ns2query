@@ -45,6 +45,7 @@ func startReposts(urlChan <-chan msgUrls, sendChan chan<- message) {
 			log.Printf("Error loading url store: %s", err)
 		}
 		f.Close()
+		log.Printf("URLs db %s loaded", urlsFilename)
 	} else {
 		log.Printf("Error opening url store: %s", err)
 	}
@@ -88,7 +89,7 @@ func startReposts(urlChan <-chan msgUrls, sendChan chan<- message) {
 			sort.Sort(matches)
 			matchFound := false
 			for _, m := range matches {
-				if m.Score < 0 {
+				if m.Score < -5 && m.DHashDistance < 7 {
 					msg += fmt.Sprintf(" %s", m.ID)
 					matchFound = true
 				}
