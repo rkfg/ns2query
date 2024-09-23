@@ -57,7 +57,7 @@ func chooseMemeOfTheDay(s *discordgo.Session, memeChannelID string, deadlineHour
 		log.Printf("Last winner message ID: %s", lastWinnerID)
 	}
 	for _, m := range allMessages {
-		if !hasMeme(m) || m.Timestamp.Before(notBefore) || m.Timestamp.After(notAfter) || m.ID == lastWinnerID {
+		if !hasMeme(m) || m.Timestamp.Before(notBefore) || m.Timestamp.After(notAfter) || m.ID == lastWinnerID || m.Author.ID == s.State.User.ID {
 			continue
 		}
 		url := m.Content
