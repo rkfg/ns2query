@@ -37,6 +37,7 @@ type message struct {
 	reactionAdd    *reaction
 	reactionRemove *reaction
 	channelID      string
+	retry          int
 }
 
 type currentServerStatus struct {
@@ -357,19 +358,34 @@ func statusUpdate(restartChan chan struct{}, s *discordgo.Session) {
 }
 
 func sendMsg(c chan message, s *discordgo.Session) {
+	var err error
 	for msg := range c {
 		channelID := msg.channelID
 		if channelID == "" {
 			channelID = config.ChannelID
 		}
 		if msg.MessageSend != nil {
-			s.ChannelMessageSendComplex(channelID, msg.MessageSend)
+			_, err = s.ChannelMessageSendComplex(channelID, msg.MessageSend)
 		}
 		if msg.reactionAdd != nil {
-			s.MessageReactionAdd(channelID, msg.reactionAdd.messageID, msg.reactionAdd.emojiID)
+			err = s.MessageReactionAdd(channelID, msg.reactionAdd.messageID, msg.reactionAdd.emojiID)
 		}
 		if msg.reactionRemove != nil {
-			s.MessageReactionRemove(channelID, msg.reactionRemove.messageID, msg.reactionRemove.emojiID, "@me")
+			err = s.MessageReactionRemove(channelID, msg.reactionRemove.messageID, msg.reactionRemove.emojiID, "@me")
+		}
+		if err != nil {
+			log.Printf("Error sending message %+v: %s, retry #%d", msg, err, msg.retry+1)
+			err = nil
+			if msg.retry > 4 {
+				log.Printf("Giving up")
+			} else {
+				go func() {
+					time.Sleep(time.Second * 5) // resend in 5 seconds
+					retryMsg := msg
+					retryMsg.retry++
+					c <- msg
+				}()
+			}
 		}
 		time.Sleep(time.Second)
 	}
