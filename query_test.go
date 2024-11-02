@@ -16,10 +16,13 @@ func TestMain(t *testing.M) {
 }
 
 func notif(t *testing.T, srv *ns2server, expected string) {
-	q := make(chan bool)
+	wait := time.Second
+	if expected == "" {
+		wait = time.Millisecond * 100
+	}
+	q := time.After(wait)
 	go func() {
 		srv.maybeNotify()
-		close(q)
 	}()
 	select {
 	case m := <-sendChan:
