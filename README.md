@@ -5,7 +5,7 @@ if there are enough players to start the round.
 
 # Compiling
 
-Grab a [Golang](https://golang.org/dl/) installer or install it from your repository, then run `go get -u github.com/rkfg/ns2query`. You should find the binary in your `$GOPATH/bin` directory. Alternatively, clone the repository and run `go build` inside. Another way is to run `go run cmd/build.go` to make a release for all supported platforms.
+Grab a [Golang](https://golang.org/dl/) installer or install it from your repository, then run `go install rkfg.me/ns2query`. You should find the binary in your `$GOPATH/bin` directory. Alternatively, clone the repository and run `go build` inside. Another way is to run `go run cmd/build.go` to make a release for all supported platforms.
 
 # Configuration
 
