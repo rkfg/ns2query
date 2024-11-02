@@ -49,6 +49,7 @@
         "seeding": 4,
         "almost_full": 12,
         "cooldown": 600,
+        "notify_empty": true,
         "ping_roles": {
             "seeding": "1038787804307673119",
             "almost_full": "1038788021673271388",

@@ -109,6 +109,8 @@ func (srv *ns2server) maybeNotify() {
 			case almostfull:
 				msg.Content = maybeMention("almost_full")
 				msg.Embed.Description = "Server is almost full!"
+				n := time.Now()
+				srv.sessionStart = &n
 				sendChan <- message{MessageSend: msg}
 			case specsonly:
 				msg.Content = maybeMention("full")
@@ -123,6 +125,13 @@ func (srv *ns2server) maybeNotify() {
 			if newState == empty {
 				// if the server goes empty we should allow seeding messages again
 				srv.lastStateAnnounced = empty
+				if config.Seeding.NotifyEmpty && srv.sessionStart != nil {
+					msg := srv.serverStatus()
+					msg.Embed.Description = fmt.Sprintf("Server is now empty. Session time: %s", time.Since(*srv.sessionStart).Truncate(time.Second).String())
+					msg.Embed.Color = 0x666666
+					sendChan <- message{MessageSend: msg}
+					srv.sessionStart = nil
+				}
 			}
 		}
 	}

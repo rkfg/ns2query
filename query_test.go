@@ -106,4 +106,14 @@ func TestNotification(t *testing.T) {
 	notif(t, srv, "") // server became empty
 	srv.players = fillPlayers(4)
 	notif(t, srv, "Seeding started! Players on the server: 1, 2, 3, 4") // server is seeding again
+	config.Seeding.NotifyEmpty = true
+	srv.players = fillPlayers(12)
+	notif(t, srv, "Server is almost full!")
+	srv.players = fillPlayers(21)
+	notif(t, srv, "Server is full but you can still make it!")
+	s := time.Now().Add(-time.Minute)
+	srv.sessionStart = &s
+	passTime(srv)
+	srv.players = fillPlayers(3)
+	notif(t, srv, "Server is now empty. Session time: 1m0s")
 }

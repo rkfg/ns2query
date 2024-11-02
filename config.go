@@ -51,6 +51,7 @@ type ns2server struct {
 	restartChan          chan struct{}
 	failures             int
 	downSince            *time.Time
+	sessionStart         *time.Time
 }
 
 func (s *ns2server) playersString() string {
@@ -97,10 +98,11 @@ func (s *ns2server) formatDowntimeMsg(down bool) string {
 }
 
 type seeding struct {
-	Seeding    int               `json:"seeding"`
-	AlmostFull int               `json:"almost_full"`
-	Cooldown   int               `json:"cooldown"`
-	PingRoles  map[string]string `json:"ping_roles"`
+	Seeding     int               `json:"seeding"`
+	AlmostFull  int               `json:"almost_full"`
+	Cooldown    int               `json:"cooldown"`
+	NotifyEmpty bool              `json:"notify_empty"`
+	PingRoles   map[string]string `json:"ping_roles"`
 }
 
 type thread struct {
