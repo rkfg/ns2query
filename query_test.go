@@ -116,4 +116,9 @@ func TestNotification(t *testing.T) {
 	passTime(srv)
 	srv.players = fillPlayers(3)
 	notif(t, srv, "Server is now empty. Session time: 1m0s")
+	passTime(srv)
+	srv.players = fillPlayers(2)
+	notif(t, srv, "") // no duplicate empty messages
+	srv.players = fillPlayers(5)
+	notif(t, srv, "Seeding started! Players on the server: 1, 2, 3, 4, 5") // seeding still works
 }
