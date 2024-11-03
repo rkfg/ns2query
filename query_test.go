@@ -115,7 +115,7 @@ func TestNotification(t *testing.T) {
 	srv.sessionStart = &s
 	passTime(srv)
 	srv.players = fillPlayers(3)
-	notif(t, srv, "Server is now empty. Session time: 1m0s")
+	notif(t, srv, "Session is now over. Total time: 1m0s")
 	passTime(srv)
 	srv.players = fillPlayers(2)
 	notif(t, srv, "") // no duplicate empty messages

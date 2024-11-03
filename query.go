@@ -127,7 +127,7 @@ func (srv *ns2server) maybeNotify() {
 				srv.lastStateAnnounced = empty
 				if config.Seeding.NotifyEmpty && srv.sessionStart != nil {
 					msg := srv.serverStatus()
-					msg.Embed.Description = fmt.Sprintf("Server is now empty. Session time: %s", time.Since(*srv.sessionStart).Truncate(time.Second).String())
+					msg.Embed.Description = fmt.Sprintf("Session is now over. Total time: %s", time.Since(*srv.sessionStart).Truncate(time.Second).String())
 					msg.Embed.Color = 0x666666
 					sendChan <- message{MessageSend: msg}
 					srv.sessionStart = nil
