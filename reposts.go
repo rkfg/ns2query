@@ -48,6 +48,7 @@ func startReposts(urlChan <-chan msgUrls, sendChan chan<- message) {
 		log.Printf("URLs db %s loaded", urlsFilename)
 	} else {
 		log.Printf("Error opening url store: %s", err)
+		saveUrls(knownUrls)
 	}
 	d := duplo.New()
 	idb, err := os.ReadFile(imagedbFilename)
@@ -60,6 +61,7 @@ func startReposts(urlChan <-chan msgUrls, sendChan chan<- message) {
 		}
 	} else {
 		log.Printf("Error opening %s, creating empty storage: %s", imagedbFilename, err)
+		saveImages(d)
 	}
 	c := http.Client{Timeout: 5 * time.Second}
 	for mu := range urlChan {
@@ -107,27 +109,35 @@ func startReposts(urlChan <-chan msgUrls, sendChan chan<- message) {
 				}}
 		}
 		if imageAdded {
-			db, err := d.GobEncode()
-			if err == nil {
-				err = os.WriteFile(imagedbFilename, db, 0644)
-				if err != nil {
-					log.Printf("Error writing image database file: %s", err)
-				}
-			} else {
-				log.Printf("Error encoding image database: %s", err)
-			}
+			saveImages(d)
 		}
 		if len(mu.Urls) > 0 {
-			f, err := os.Create(urlsFilename)
-			if err == nil {
-				err = gob.NewEncoder(f).Encode(knownUrls)
-				if err != nil {
-					log.Printf("Error encoding url database: %s", err)
-				}
-			} else {
-				log.Printf("Error creating url file: %s", err)
-			}
-			f.Close()
+			saveUrls(knownUrls)
 		}
 	}
+}
+
+func saveImages(d *duplo.Store) {
+	db, err := d.GobEncode()
+	if err == nil {
+		err = os.WriteFile(imagedbFilename, db, 0644)
+		if err != nil {
+			log.Printf("Error writing image database file: %s", err)
+		}
+	} else {
+		log.Printf("Error encoding image database: %s", err)
+	}
+}
+
+func saveUrls(knownUrls map[string]string) {
+	f, err := os.Create(urlsFilename)
+	if err == nil {
+		err = gob.NewEncoder(f).Encode(knownUrls)
+		if err != nil {
+			log.Printf("Error encoding url database: %s", err)
+		}
+	} else {
+		log.Printf("Error creating url file: %s", err)
+	}
+	f.Close()
 }
