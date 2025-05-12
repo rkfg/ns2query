@@ -69,6 +69,7 @@ func startReposts(urlChan <-chan msgUrls, sendChan chan<- message) {
 		imageAdded := false
 		for _, u := range mu.Urls {
 			if msgLink, ok := knownUrls[u]; ok {
+				log.Printf("Found a link repost of %s", u)
 				msg += fmt.Sprintf(" %s", msgLink)
 				continue
 			}
@@ -91,7 +92,8 @@ func startReposts(urlChan <-chan msgUrls, sendChan chan<- message) {
 			sort.Sort(matches)
 			matchFound := false
 			for _, m := range matches {
-				if m.Score < -5 && m.DHashDistance < 7 {
+				if m.Score < -30 && m.DHashDistance < 7 {
+					log.Printf("Found a potential repost of %s, match data: %s", u, m.String())
 					msg += fmt.Sprintf(" %s", m.ID)
 					matchFound = true
 				}
@@ -105,7 +107,8 @@ func startReposts(urlChan <-chan msgUrls, sendChan chan<- message) {
 			msg = "Potential repost of:" + msg
 			sendChan <- message{
 				channelID: mu.Message.ChannelID, MessageSend: &discordgo.MessageSend{
-					Content: msg,
+					Content:   msg,
+					Reference: mu.Message.Reference(),
 				}}
 		}
 		if imageAdded {
