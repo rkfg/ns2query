@@ -1,8 +1,7 @@
 module rkfg.me/ns2query
 
 go 1.22
-
-toolchain go1.23.2
+toolchain go1.24.1
 
 require (
 	github.com/Philipp15b/go-steamapi v0.0.0-20210114153316-ec4fdd23b4c1
@@ -16,7 +15,7 @@ require (
 require (
 	github.com/gorilla/websocket v1.5.3 // indirect
 	github.com/nfnt/resize v0.0.0-20180221191011-83c6a9932646 // indirect
-	golang.org/x/crypto v0.31.0 // indirect
+	golang.org/x/crypto v0.35.0 // indirect
 	golang.org/x/image v0.21.0
-	golang.org/x/sys v0.28.0 // indirect
+	golang.org/x/sys v0.30.0 // indirect
 )
