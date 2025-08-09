@@ -133,10 +133,6 @@ var config struct {
 	Users         users             `json:"users"`
 }
 
-func loadConfig(path string) error {
-	return loadConfigFilename(path)
-}
-
 func loadConfigFilename(filename string) error {
 	if file, err := os.Open(filename); err == nil {
 		defer file.Close()

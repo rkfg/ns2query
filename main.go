@@ -26,7 +26,7 @@ Options:
 	if err != nil {
 		log.Fatal("error parsing arguments:", err)
 	}
-	if err := loadConfig(opts["-c"].(string)); err != nil {
+	if err := loadConfigFilename(opts["-c"].(string)); err != nil {
 		log.Fatal("error loading config:", err)
 	}
 	if config.BoltDBPath != "" {
