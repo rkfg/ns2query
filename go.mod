@@ -1,6 +1,7 @@
 module rkfg.me/ns2query
 
-go 1.22
+go 1.24.0
+
 toolchain go1.24.1
 
 require (
@@ -15,7 +16,7 @@ require (
 require (
 	github.com/gorilla/websocket v1.5.3 // indirect
 	github.com/nfnt/resize v0.0.0-20180221191011-83c6a9932646 // indirect
-	golang.org/x/crypto v0.35.0 // indirect
+	golang.org/x/crypto v0.45.0 // indirect
 	golang.org/x/image v0.21.0
-	golang.org/x/sys v0.30.0 // indirect
+	golang.org/x/sys v0.38.0 // indirect
 )
