@@ -20,7 +20,6 @@ import (
 
 const (
 	cmdPrefix       = "-"
-	lowercasePrefix = "/lc/"
 	discordPrefix   = "!"
 	thumbsupEmoji   = "\U0001F44D"
 	clownEmoji      = "\U0001F921"

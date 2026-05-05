@@ -303,16 +303,16 @@ func (srv *ns2server) idsLoop() {
 		ids, err := srv.getPlayerIDs()
 		if err != nil {
 			log.Printf("Error decoding ids: %s", err)
-			continue
-		}
-		srv.checkRegulars(ids)
-		if len(srv.newRegulars) == 0 {
-			// make sure this never fires too early if there are no queued regulars
-			announceChan = time.After(srv.QueryIDInterval * 5)
 		} else {
-			if !srv.announceScheduled {
-				announceChan = time.After(srv.AnnounceDelay)
-				srv.announceScheduled = true
+			srv.checkRegulars(ids)
+			if len(srv.newRegulars) == 0 {
+				// make sure this never fires too early if there are no queued regulars
+				announceChan = time.After(srv.QueryIDInterval * 5)
+			} else {
+				if !srv.announceScheduled {
+					announceChan = time.After(srv.AnnounceDelay)
+					srv.announceScheduled = true
+				}
 			}
 		}
 		select {
